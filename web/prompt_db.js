@@ -309,8 +309,6 @@ app.registerExtension({
                                     if (newPromptNameWidget.inputEl) {
                                         newPromptNameWidget.inputEl.value = "";
                                     }
-                                    
-                                    alert("New prompt created successfully!");
                                 } else {
                                     console.error("Create failed:", data.message);
                                     alert("Create failed: " + data.message);
