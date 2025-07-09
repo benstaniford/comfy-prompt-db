@@ -224,16 +224,30 @@ app.registerExtension({
                     }, { serialize: false });
                     console.log("Save button added:", saveButton);
                     
+                    // Add input fields for new prompt creation
+                    console.log("Adding New Category input field");
+                    const newCategoryWidget = this.addWidget("text", "New Category", "", null, { serialize: false });
+                    
+                    console.log("Adding New Prompt Name input field");
+                    const newPromptNameWidget = this.addWidget("text", "New Prompt Name", "", null, { serialize: false });
+                    
                     // Add New button
                     console.log("Adding New button");
-                    const newButton = this.addWidget("button", "📝 New", "", async () => {
-                        console.log("New button clicked");
-                        alert("Creating a new prompt. Please enter the category and prompt name.");
-                        const category = prompt("Enter category name:");
-                        if (!category) return;
+                    const newButton = this.addWidget("button", "📝 Create", "", async () => {
+                        console.log("Create button clicked");
                         
-                        const promptName = prompt("Enter prompt name:");
-                        if (!promptName) return;
+                        const category = newCategoryWidget.value?.trim();
+                        const promptName = newPromptNameWidget.value?.trim();
+                        
+                        if (!category) {
+                            alert("Please enter a category name");
+                            return;
+                        }
+                        
+                        if (!promptName) {
+                            alert("Please enter a prompt name");
+                            return;
+                        }
                         
                         console.log("Creating new prompt:", { category, promptName });
                         
@@ -285,15 +299,31 @@ app.registerExtension({
                                     if (promptTextWidget.callback) {
                                         promptTextWidget.callback("");
                                     }
+                                    
+                                    // Clear the input fields
+                                    newCategoryWidget.value = "";
+                                    newPromptNameWidget.value = "";
+                                    if (newCategoryWidget.inputEl) {
+                                        newCategoryWidget.inputEl.value = "";
+                                    }
+                                    if (newPromptNameWidget.inputEl) {
+                                        newPromptNameWidget.inputEl.value = "";
+                                    }
+                                    
+                                    alert("New prompt created successfully!");
                                 } else {
                                     console.error("Create failed:", data.message);
+                                    alert("Create failed: " + data.message);
                                 }
+                            } else {
+                                alert("API call failed with status: " + response.status);
                             }
                         } catch (error) {
                             console.error("Error creating prompt:", error);
+                            alert("Error creating prompt: " + error.message);
                         }
                     }, { serialize: false });
-                    console.log("New button added:", newButton);
+                    console.log("Create button added:", newButton);
                     
                     // Initialize with current category
                     console.log("Initializing with category:", categoryWidget.value);
