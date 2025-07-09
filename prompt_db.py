@@ -147,10 +147,28 @@ class PromptDB:
             categories = ["default"]
             prompt_names = ["new prompt"]
         
+        # Ensure the default prompt is from the first category
+        default_prompt = ""
+        if categories and len(categories) > 0:
+            try:
+                # Re-read the file to get the first category's first prompt
+                if os.path.exists(prompts_file):
+                    with open(prompts_file, 'r', encoding='utf-8') as f:
+                        prompts_db = json.load(f)
+                        first_category = categories[0]
+                        first_category_prompts = list(prompts_db.get(first_category, {}).keys())
+                        if first_category_prompts:
+                            default_prompt = first_category_prompts[0]
+            except Exception as e:
+                print(f"Error getting default prompt: {e}")
+        
+        if not default_prompt and prompt_names:
+            default_prompt = prompt_names[0]
+        
         return {
             "required": {
                 "category": (categories, {"default": categories[0]}),
-                "prompt_name": (prompt_names, {"default": prompt_names[0] if prompt_names else "", "forceInput": False}),
+                "prompt_name": (prompt_names, {"default": default_prompt, "forceInput": False}),
                 "prompt_text": ("STRING", {"multiline": True, "default": ""}),
             }
         }
