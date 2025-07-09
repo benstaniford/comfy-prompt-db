@@ -7,7 +7,7 @@ A ComfyUI custom node that provides a database-driven prompt management system. 
 - **Category-based Organization**: Organize prompts into logical categories
 - **Dropdown Selection**: Easy category and prompt selection via dropdown menus
 - **Editable Prompts**: Edit prompt text directly in the node interface
-- **Persistent Storage**: All prompts stored in `prompts.json` in your ComfyUI root directory
+- **Persistent Storage**: All prompts stored in `user/default/user-db/prompts.json` in your ComfyUI directory
 - **Save/Load Functionality**: Save changes back to the database instantly
 - **Create New Prompts**: Add new categories and prompts on the fly
 - **No Inputs Required**: Standalone text generation node
