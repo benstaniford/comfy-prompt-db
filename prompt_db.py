@@ -7,7 +7,11 @@ import server
 def get_comfy_path():
     """Get the ComfyUI root directory with fallback methods"""
     try:
-        # Method 1: Use checkpoints folder path
+        # Method 1: Use folder_paths.base_path if available
+        if hasattr(folder_paths, 'base_path'):
+            return folder_paths.base_path
+        
+        # Method 2: Use checkpoints folder path
         checkpoint_paths = folder_paths.get_folder_paths("checkpoints")
         if checkpoint_paths:
             # Go up from models/checkpoints to the root
@@ -15,7 +19,7 @@ def get_comfy_path():
             if "models" in checkpoint_path:
                 return checkpoint_path.split("models")[0].rstrip(os.sep)
         
-        # Method 2: Use output folder path
+        # Method 3: Use output folder path
         output_paths = folder_paths.get_folder_paths("output")
         if output_paths:
             # Go up from output to the root
@@ -23,7 +27,7 @@ def get_comfy_path():
             if "output" in output_path:
                 return output_path.split("output")[0].rstrip(os.sep)
         
-        # Method 3: Use current working directory as fallback
+        # Method 4: Use current working directory as fallback
         return os.getcwd()
     except Exception as e:
         # If we can't determine the path, try to find the ComfyUI directory by going up
@@ -35,11 +39,23 @@ def get_comfy_path():
         return os.getcwd()
 
 
+def get_user_db_path():
+    """Get the user database directory"""
+    try:
+        comfy_path = get_comfy_path()
+        user_db_path = os.path.join(comfy_path, "user", "default", "user-db")
+        os.makedirs(user_db_path, exist_ok=True)
+        return user_db_path
+    except Exception as e:
+        print(f"Error creating user database directory: {e}")
+        return get_comfy_path()  # fallback to root
+
+
 class PromptDB:
     def __init__(self):
-        # Get the ComfyUI root directory
-        self.comfy_path = get_comfy_path()
-        self.prompts_file = os.path.join(self.comfy_path, "prompts.json")
+        # Get the user database directory
+        self.user_db_path = get_user_db_path()
+        self.prompts_file = os.path.join(self.user_db_path, "prompts.json")
         self.ensure_prompts_file()
     
     def ensure_prompts_file(self):
@@ -53,7 +69,7 @@ class PromptDB:
                 },
                 "styles": {
                     "cinematic": "cinematic lighting, dramatic shadows, film grain, professional cinematography",
-                    "artistic": "artistic composition, creative lighting, expressive style, kolor fine art photography",
+                    "artistic": "artistic composition, creative lighting, expressive style, fine art photography",
                     "minimalist": "clean composition, minimal background, simple elegant style"
                 },
                 "quality": {
@@ -76,9 +92,9 @@ class PromptDB:
         prompt_names = []
         
         try:
-            # Get the ComfyUI root directory
-            comfy_path = get_comfy_path()
-            prompts_file = os.path.join(comfy_path, "prompts.json")
+            # Get the user database directory
+            user_db_path = get_user_db_path()
+            prompts_file = os.path.join(user_db_path, "prompts.json")
             
             # Create file if it doesn't exist
             if not os.path.exists(prompts_file):
@@ -186,9 +202,9 @@ async def load_prompts(request):
         if not category:
             return web.json_response({"prompts": []})
         
-        # Get the ComfyUI root directory
-        comfy_path = get_comfy_path()
-        prompts_file = os.path.join(comfy_path, "prompts.json")
+        # Get the user database directory
+        user_db_path = get_user_db_path()
+        prompts_file = os.path.join(user_db_path, "prompts.json")
         
         # Load prompts database
         prompts_db = {}
@@ -220,9 +236,9 @@ async def load_prompt_text(request):
         if not category or not prompt_name:
             return web.json_response({"prompt_text": ""})
         
-        # Get the ComfyUI root directory
-        comfy_path = get_comfy_path()
-        prompts_file = os.path.join(comfy_path, "prompts.json")
+        # Get the user database directory
+        user_db_path = get_user_db_path()
+        prompts_file = os.path.join(user_db_path, "prompts.json")
         
         # Load prompts database
         prompts_db = {}
@@ -254,9 +270,9 @@ async def save_prompt_text(request):
         if not category or not prompt_name:
             return web.json_response({"success": False, "message": "Category and prompt name are required"})
         
-        # Get the ComfyUI root directory
-        comfy_path = get_comfy_path()
-        prompts_file = os.path.join(comfy_path, "prompts.json")
+        # Get the user database directory
+        user_db_path = get_user_db_path()
+        prompts_file = os.path.join(user_db_path, "prompts.json")
         
         # Load existing prompts database
         prompts_db = {}
@@ -302,9 +318,9 @@ async def create_new_prompt(request):
         if not category or not prompt_name:
             return web.json_response({"success": False, "message": "Category and prompt name are required"})
         
-        # Get the ComfyUI root directory
-        comfy_path = get_comfy_path()
-        prompts_file = os.path.join(comfy_path, "prompts.json")
+        # Get the user database directory
+        user_db_path = get_user_db_path()
+        prompts_file = os.path.join(user_db_path, "prompts.json")
         
         # Load existing prompts database
         prompts_db = {}
@@ -326,7 +342,7 @@ async def create_new_prompt(request):
         try:
             os.makedirs(os.path.dirname(prompts_file), exist_ok=True)
             with open(prompts_file, 'w', encoding='utf-8') as f:
-                json.dump(prompts_db, f, indent=2, ensure_ascii=2)
+                json.dump(prompts_db, f, indent=2, ensure_ascii=False)
             
             return web.json_response({"success": True, "message": f"Created new prompt '{prompt_name}'"})
             
