@@ -12,15 +12,6 @@ app.registerExtension({
         
         if (nodeData.name === "PromptDB") {
             console.log("Registering Prompt DB");
-            
-            // Modify the input types to make category and prompt_name into combo widgets
-            if (nodeData.input && nodeData.input.required) {
-                // Convert category to combo
-                nodeData.input.required.category = [[], {"default": ""}];
-                // Convert prompt_name to combo
-                nodeData.input.required.prompt_name = [[], {"default": ""}];
-            }
-            
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             
             nodeType.prototype.onNodeCreated = function() {
@@ -40,32 +31,12 @@ app.registerExtension({
                 });
                 
                 if (categoryWidget && promptNameWidget && promptTextWidget) {
-                    console.log("Adding functionality to Prompt DB node");
-                    
-                    // Function to load categories
-                    const loadCategories = async () => {
-                        try {
-                            const response = await api.fetchApi("/prompt_db_categories", {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({})
-                            });
-                            
-                            if (response.ok) {
-                                const data = await response.json();
-                                categoryWidget.options.values = data.categories || [];
-                                console.log("Loaded categories:", data.categories);
-                            }
-                        } catch (error) {
-                            console.error("Error loading categories:", error);
-                        }
-                    };
+                    console.log("Setting up Prompt DB functionality");
                     
                     // Function to load prompts for a category
                     const loadPrompts = async (category) => {
                         try {
+                            console.log("Loading prompts for category:", category);
                             const response = await api.fetchApi("/prompt_db_prompts", {
                                 method: "POST",
                                 headers: {
@@ -78,10 +49,32 @@ app.registerExtension({
                             
                             if (response.ok) {
                                 const data = await response.json();
-                                promptNameWidget.options.values = data.prompts || [];
-                                promptNameWidget.value = "";
-                                promptTextWidget.value = "";
-                                console.log("Loaded prompts for category", category, ":", data.prompts);
+                                console.log("Prompts loaded:", data.prompts);
+                                
+                                // Update the prompt name dropdown values
+                                if (data.prompts && data.prompts.length > 0) {
+                                    promptNameWidget.options.values = data.prompts;
+                                    promptNameWidget.value = data.prompts[0];
+                                    
+                                    // If widget has an input element, update it
+                                    if (promptNameWidget.inputEl) {
+                                        promptNameWidget.inputEl.innerHTML = "";
+                                        data.prompts.forEach(prompt => {
+                                            const option = document.createElement("option");
+                                            option.value = prompt;
+                                            option.textContent = prompt;
+                                            promptNameWidget.inputEl.appendChild(option);
+                                        });
+                                        promptNameWidget.inputEl.value = data.prompts[0];
+                                    }
+                                    
+                                    // Load text for the first prompt
+                                    await loadPromptText(category, data.prompts[0]);
+                                } else {
+                                    promptNameWidget.options.values = [];
+                                    promptNameWidget.value = "";
+                                    promptTextWidget.value = "";
+                                }
                             }
                         } catch (error) {
                             console.error("Error loading prompts:", error);
@@ -91,6 +84,7 @@ app.registerExtension({
                     // Function to load prompt text
                     const loadPromptText = async (category, promptName) => {
                         try {
+                            console.log("Loading prompt text for:", category, promptName);
                             const response = await api.fetchApi("/prompt_db_text", {
                                 method: "POST",
                                 headers: {
@@ -104,17 +98,22 @@ app.registerExtension({
                             
                             if (response.ok) {
                                 const data = await response.json();
+                                console.log("Prompt text loaded:", data.prompt_text);
                                 promptTextWidget.value = data.prompt_text || "";
-                                promptTextWidget.callback && promptTextWidget.callback(data.prompt_text || "");
-                                console.log("Loaded prompt text:", data.prompt_text);
+                                if (promptTextWidget.callback) {
+                                    promptTextWidget.callback(data.prompt_text || "");
+                                }
                             }
                         } catch (error) {
                             console.error("Error loading prompt text:", error);
                         }
                     };
                     
-                    // Override category widget callback
+                    // Store original callbacks
                     const originalCategoryCallback = categoryWidget.callback;
+                    const originalPromptNameCallback = promptNameWidget.callback;
+                    
+                    // Override category widget callback
                     categoryWidget.callback = function(value) {
                         console.log("Category selected:", value);
                         if (originalCategoryCallback) {
@@ -126,7 +125,6 @@ app.registerExtension({
                     };
                     
                     // Override prompt name widget callback
-                    const originalPromptNameCallback = promptNameWidget.callback;
                     promptNameWidget.callback = function(value) {
                         console.log("Prompt name selected:", value);
                         if (originalPromptNameCallback) {
@@ -138,11 +136,14 @@ app.registerExtension({
                     };
                     
                     // Add Save button
-                    console.log("Adding save button");
+                    console.log("Adding Save button");
                     this.addWidget("button", "💾 Save", "", async () => {
+                        console.log("Save button clicked");
                         const category = categoryWidget.value;
                         const promptName = promptNameWidget.value;
                         const promptText = promptTextWidget.value;
+                        
+                        console.log("Save data:", { category, promptName, promptText });
                         
                         if (!category || !promptName) {
                             console.log("Category and prompt name are required");
@@ -176,13 +177,16 @@ app.registerExtension({
                     }, { serialize: false });
                     
                     // Add New button
-                    console.log("Adding new button");
+                    console.log("Adding New button");
                     this.addWidget("button", "📝 New", "", async () => {
+                        console.log("New button clicked");
                         const category = prompt("Enter category name:");
                         if (!category) return;
                         
                         const promptName = prompt("Enter prompt name:");
                         if (!promptName) return;
+                        
+                        console.log("Creating new prompt:", { category, promptName });
                         
                         try {
                             const response = await api.fetchApi("/prompt_db_create", {
@@ -200,15 +204,38 @@ app.registerExtension({
                                 const data = await response.json();
                                 if (data.success) {
                                     console.log("New prompt created:", data.message);
-                                    // Refresh categories and select the new one
-                                    await loadCategories();
+                                    
+                                    // Update category dropdown if it's a new category
+                                    const currentCategories = categoryWidget.options.values;
+                                    if (!currentCategories.includes(category)) {
+                                        categoryWidget.options.values.push(category);
+                                        if (categoryWidget.inputEl) {
+                                            const option = document.createElement("option");
+                                            option.value = category;
+                                            option.textContent = category;
+                                            categoryWidget.inputEl.appendChild(option);
+                                        }
+                                    }
+                                    
+                                    // Select the new category and load its prompts
                                     categoryWidget.value = category;
-                                    categoryWidget.callback && categoryWidget.callback(category);
+                                    if (categoryWidget.inputEl) {
+                                        categoryWidget.inputEl.value = category;
+                                    }
+                                    
                                     await loadPrompts(category);
+                                    
+                                    // Select the new prompt
                                     promptNameWidget.value = promptName;
-                                    promptNameWidget.callback && promptNameWidget.callback(promptName);
+                                    if (promptNameWidget.inputEl) {
+                                        promptNameWidget.inputEl.value = promptName;
+                                    }
+                                    
+                                    // Clear text area for new prompt
                                     promptTextWidget.value = "";
-                                    promptTextWidget.callback && promptTextWidget.callback("");
+                                    if (promptTextWidget.callback) {
+                                        promptTextWidget.callback("");
+                                    }
                                 } else {
                                     console.error("Create failed:", data.message);
                                 }
@@ -218,8 +245,11 @@ app.registerExtension({
                         }
                     }, { serialize: false });
                     
-                    // Load initial categories
-                    loadCategories();
+                    // Initialize with current category
+                    console.log("Initializing with category:", categoryWidget.value);
+                    if (categoryWidget.value) {
+                        loadPrompts(categoryWidget.value);
+                    }
                     
                     console.log("Finished setting up Prompt DB. Total widgets:", this.widgets?.length);
                     this.widgets?.forEach((w, i) => console.log(`Widget ${i}: ${w.name} (${w.type})`));
@@ -228,7 +258,7 @@ app.registerExtension({
                     this.computeSize();
                     this.setDirtyCanvas(true, true);
                 } else {
-                    console.log("Could not find required widgets");
+                    console.log("Could not find required widgets. Available widgets:", this.widgets?.map(w => w.name));
                 }
                 
                 return r;

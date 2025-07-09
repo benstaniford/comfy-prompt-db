@@ -5,26 +5,42 @@ from aiohttp import web
 import server
 
 
+def get_comfy_path():
+    """Get the ComfyUI root directory with fallback methods"""
+    try:
+        # Method 1: Use checkpoints folder path
+        checkpoint_paths = folder_paths.get_folder_paths("checkpoints")
+        if checkpoint_paths:
+            # Go up from models/checkpoints to the root
+            checkpoint_path = checkpoint_paths[0]
+            if "models" in checkpoint_path:
+                return checkpoint_path.split("models")[0].rstrip(os.sep)
+        
+        # Method 2: Use output folder path
+        output_paths = folder_paths.get_folder_paths("output")
+        if output_paths:
+            # Go up from output to the root
+            output_path = output_paths[0]
+            if "output" in output_path:
+                return output_path.split("output")[0].rstrip(os.sep)
+        
+        # Method 3: Use current working directory as fallback
+        return os.getcwd()
+    except Exception as e:
+        print(f"Error determining ComfyUI path: {e}")
+        # If we can't determine the path, try to find the ComfyUI directory by going up
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        while current_dir != os.path.dirname(current_dir):  # Stop at root
+            if os.path.exists(os.path.join(current_dir, "main.py")) and os.path.exists(os.path.join(current_dir, "comfy")):
+                return current_dir
+            current_dir = os.path.dirname(current_dir)
+        return os.getcwd()
+
+
 class PromptDB:
     def __init__(self):
-        # Get the ComfyUI root directory - try multiple methods
-        try:
-            # Method 1: Use checkpoints folder path
-            checkpoint_paths = folder_paths.get_folder_paths("checkpoints")
-            if checkpoint_paths:
-                self.comfy_path = checkpoint_paths[0].split("models")[0]
-            else:
-                # Method 2: Use output folder path
-                output_paths = folder_paths.get_folder_paths("output")
-                if output_paths:
-                    self.comfy_path = output_paths[0].split("output")[0]
-                else:
-                    # Method 3: Use current working directory as fallback
-                    self.comfy_path = os.getcwd()
-        except Exception as e:
-            print(f"Error determining ComfyUI path: {e}")
-            self.comfy_path = os.getcwd()
-        
+        # Get the ComfyUI root directory
+        self.comfy_path = get_comfy_path()
         self.prompts_file = os.path.join(self.comfy_path, "prompts.json")
         self.ensure_prompts_file()
     
@@ -58,10 +74,64 @@ class PromptDB:
 
     @classmethod
     def INPUT_TYPES(cls):
+        # Load categories from the prompts file
+        categories = []
+        prompt_names = []
+        
+        try:
+            # Get the ComfyUI root directory
+            comfy_path = get_comfy_path()
+            prompts_file = os.path.join(comfy_path, "prompts.json")
+            
+            # Create file if it doesn't exist
+            if not os.path.exists(prompts_file):
+                default_prompts = {
+                    "poses": {
+                        "posing with camera": "a person posing with a camera, professional photography pose, confident stance",
+                        "casual sitting": "person sitting casually, relaxed posture, natural lighting",
+                        "standing portrait": "person standing in portrait pose, direct eye contact, professional setting"
+                    },
+                    "styles": {
+                        "cinematic": "cinematic lighting, dramatic shadows, film grain, professional cinematography",
+                        "artistic": "artistic composition, creative lighting, expressive style, fine art photography",
+                        "minimalist": "clean composition, minimal background, simple elegant style"
+                    },
+                    "quality": {
+                        "high quality": "masterpiece, best quality, ultra detailed, 8k resolution, professional photography",
+                        "artistic quality": "artistic masterpiece, fine art, museum quality, exceptional detail",
+                        "photorealistic": "photorealistic, hyperrealistic, lifelike, professional photo quality"
+                    }
+                }
+                try:
+                    os.makedirs(os.path.dirname(prompts_file), exist_ok=True)
+                    with open(prompts_file, 'w', encoding='utf-8') as f:
+                        json.dump(default_prompts, f, indent=2, ensure_ascii=False)
+                    print(f"Created default prompts.json at {prompts_file}")
+                except Exception as e:
+                    print(f"Error creating prompts.json: {e}")
+            
+            # Load the prompts file
+            if os.path.exists(prompts_file):
+                with open(prompts_file, 'r', encoding='utf-8') as f:
+                    prompts_db = json.load(f)
+                    categories = list(prompts_db.keys())
+                    # Load prompt names for the first category
+                    if categories:
+                        first_category = categories[0]
+                        prompt_names = list(prompts_db[first_category].keys())
+                        
+        except Exception as e:
+            print(f"Error loading categories for INPUT_TYPES: {e}")
+        
+        # Ensure we have at least one category
+        if not categories:
+            categories = ["default"]
+            prompt_names = ["new prompt"]
+        
         return {
             "required": {
-                "category": ("STRING", {"default": ""}),
-                "prompt_name": ("STRING", {"default": ""}),
+                "category": (categories, {"default": categories[0]}),
+                "prompt_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
                 "prompt_text": ("STRING", {"multiline": True, "default": ""}),
             }
         }
@@ -99,26 +169,6 @@ class PromptDB:
     def get_prompt(self, category="", prompt_name="", prompt_text=""):
         """Return the prompt text"""
         return (prompt_text,)
-
-
-def get_comfy_path():
-    """Get the ComfyUI root directory with fallback methods"""
-    try:
-        # Method 1: Use checkpoints folder path
-        checkpoint_paths = folder_paths.get_folder_paths("checkpoints")
-        if checkpoint_paths:
-            return checkpoint_paths[0].split("models")[0]
-        
-        # Method 2: Use output folder path
-        output_paths = folder_paths.get_folder_paths("output")
-        if output_paths:
-            return output_paths[0].split("output")[0]
-        
-        # Method 3: Use current working directory as fallback
-        return os.getcwd()
-    except Exception as e:
-        print(f"Error determining ComfyUI path: {e}")
-        return os.getcwd()
 
 
 # API endpoint for loading categories
