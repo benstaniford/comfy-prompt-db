@@ -1,0 +1,38 @@
+/* Prompt DB Node Styling */
+.prompt-db-node {
+    min-width: 300px;
+}
+
+.prompt-db-node .widget-text {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.prompt-db-node .widget-combo {
+    min-width: 200px;
+}
+
+.prompt-db-node .widget-button {
+    margin: 2px;
+    padding: 4px 8px;
+}
+
+.prompt-db-textarea {
+    width: 100%;
+    min-height: 100px;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 8px;
+    border: 1px solid #666;
+    background-color: #2a2a2a;
+    color: #fff;
+    resize: vertical;
+}
+
+.prompt-db-dropdown {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid #666;
+    background-color: #2a2a2a;
+    color: #fff;
+}
