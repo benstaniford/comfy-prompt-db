@@ -118,10 +118,26 @@ class PromptDB:
                 with open(prompts_file, 'r', encoding='utf-8') as f:
                     prompts_db = json.load(f)
                     categories = list(prompts_db.keys())
-                    # Load prompt names for the first category
-                    if categories:
+                    
+                    # Collect all possible prompt names from all categories
+                    all_prompt_names = set()
+                    for category_prompts in prompts_db.values():
+                        if isinstance(category_prompts, dict):
+                            all_prompt_names.update(category_prompts.keys())
+                    
+                    # Convert to list and ensure consistent ordering
+                    prompt_names = sorted(list(all_prompt_names))
+                    
+                    # If we have prompts, use the first category's first prompt as default
+                    if categories and prompt_names:
                         first_category = categories[0]
-                        prompt_names = list(prompts_db[first_category].keys())
+                        first_category_prompts = list(prompts_db[first_category].keys())
+                        if first_category_prompts:
+                            # Put the first prompt from the first category at the beginning
+                            default_prompt = first_category_prompts[0]
+                            if default_prompt in prompt_names:
+                                prompt_names.remove(default_prompt)
+                                prompt_names.insert(0, default_prompt)
                         
         except Exception as e:
             print(f"Error loading categories for INPUT_TYPES: {e}")
@@ -134,7 +150,7 @@ class PromptDB:
         return {
             "required": {
                 "category": (categories, {"default": categories[0]}),
-                "prompt_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_name": (prompt_names, {"default": prompt_names[0] if prompt_names else "", "forceInput": False}),
                 "prompt_text": ("STRING", {"multiline": True, "default": ""}),
             }
         }
