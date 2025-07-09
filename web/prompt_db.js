@@ -1,17 +1,18 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-console.log("Prompt DB JavaScript file loaded!");
+console.log("=== PROMPT DB JAVASCRIPT FILE LOADED ===");
+console.log("Current time:", new Date().toLocaleTimeString());
 
 // Extension for Prompt DB
 app.registerExtension({
     name: "PromptDB",
     
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        console.log("beforeRegisterNodeDef called for:", nodeData.name);
+        console.log("=== beforeRegisterNodeDef called for:", nodeData.name);
         
         if (nodeData.name === "PromptDB") {
-            console.log("Registering Prompt DB");
+            console.log("=== Registering Prompt DB ===");
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             
             nodeType.prototype.onNodeCreated = function() {
@@ -100,9 +101,19 @@ app.registerExtension({
                                 const data = await response.json();
                                 console.log("Prompt text loaded:", data.prompt_text);
                                 promptTextWidget.value = data.prompt_text || "";
+                                
+                                // Update the text area DOM element if it exists
+                                if (promptTextWidget.inputEl) {
+                                    promptTextWidget.inputEl.value = data.prompt_text || "";
+                                }
+                                
+                                // Trigger the callback to update the node
                                 if (promptTextWidget.callback) {
                                     promptTextWidget.callback(data.prompt_text || "");
                                 }
+                                
+                                // Force canvas redraw to show changes
+                                nodeInstance.setDirtyCanvas(true, true);
                             }
                         } catch (error) {
                             console.error("Error loading prompt text:", error);
@@ -112,6 +123,9 @@ app.registerExtension({
                     // Store original callbacks
                     const originalCategoryCallback = categoryWidget.callback;
                     const originalPromptNameCallback = promptNameWidget.callback;
+                    
+                    // Store reference to the node instance
+                    const nodeInstance = this;
                     
                     // Override category widget callback
                     categoryWidget.callback = function(value) {
@@ -131,13 +145,14 @@ app.registerExtension({
                             originalPromptNameCallback.call(this, value);
                         }
                         if (value && categoryWidget.value) {
+                            console.log("Loading prompt text for category:", categoryWidget.value, "prompt:", value);
                             loadPromptText(categoryWidget.value, value);
                         }
                     };
                     
                     // Add Save button
                     console.log("Adding Save button");
-                    this.addWidget("button", "💾 Save", "", async () => {
+                    const saveButton = this.addWidget("button", "💾 Save", "", async () => {
                         console.log("Save button clicked");
                         const category = categoryWidget.value;
                         const promptName = promptNameWidget.value;
@@ -175,10 +190,11 @@ app.registerExtension({
                             console.error("Error saving prompt:", error);
                         }
                     }, { serialize: false });
+                    console.log("Save button added:", saveButton);
                     
                     // Add New button
                     console.log("Adding New button");
-                    this.addWidget("button", "📝 New", "", async () => {
+                    const newButton = this.addWidget("button", "📝 New", "", async () => {
                         console.log("New button clicked");
                         const category = prompt("Enter category name:");
                         if (!category) return;
@@ -244,11 +260,19 @@ app.registerExtension({
                             console.error("Error creating prompt:", error);
                         }
                     }, { serialize: false });
+                    console.log("New button added:", newButton);
                     
                     // Initialize with current category
                     console.log("Initializing with category:", categoryWidget.value);
                     if (categoryWidget.value) {
-                        loadPrompts(categoryWidget.value);
+                        // Load prompts for the current category
+                        loadPrompts(categoryWidget.value).then(() => {
+                            // After loading prompts, load the text for the current prompt
+                            if (promptNameWidget.value) {
+                                console.log("Loading initial prompt text for:", categoryWidget.value, promptNameWidget.value);
+                                loadPromptText(categoryWidget.value, promptNameWidget.value);
+                            }
+                        });
                     }
                     
                     console.log("Finished setting up Prompt DB. Total widgets:", this.widgets?.length);

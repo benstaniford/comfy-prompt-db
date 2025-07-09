@@ -4,6 +4,9 @@ import folder_paths
 from aiohttp import web
 import server
 
+print("=== PROMPT DB PYTHON MODULE LOADED ===")
+print(f"Module file: {__file__}")
+print(f"Current working directory: {os.getcwd()}")
 
 def get_comfy_path():
     """Get the ComfyUI root directory with fallback methods"""
@@ -368,3 +371,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptDB": "Prompt Database"
 }
+
+print("=== PROMPT DB NODE MAPPINGS DEFINED ===")
+print(f"NODE_CLASS_MAPPINGS: {NODE_CLASS_MAPPINGS}")
+print(f"NODE_DISPLAY_NAME_MAPPINGS: {NODE_DISPLAY_NAME_MAPPINGS}")
