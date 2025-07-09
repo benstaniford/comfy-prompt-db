@@ -85,7 +85,10 @@ app.registerExtension({
                     // Function to load prompt text
                     const loadPromptText = async (category, promptName) => {
                         try {
-                            console.log("Loading prompt text for:", category, promptName);
+                            console.log("=== Loading prompt text ===");
+                            console.log("Category:", category);
+                            console.log("Prompt name:", promptName);
+                            
                             const response = await api.fetchApi("/prompt_db_text", {
                                 method: "POST",
                                 headers: {
@@ -97,23 +100,36 @@ app.registerExtension({
                                 })
                             });
                             
+                            console.log("API response status:", response.status);
                             if (response.ok) {
                                 const data = await response.json();
+                                console.log("API response data:", data);
                                 console.log("Prompt text loaded:", data.prompt_text);
+                                
                                 promptTextWidget.value = data.prompt_text || "";
+                                console.log("Set promptTextWidget.value to:", promptTextWidget.value);
                                 
                                 // Update the text area DOM element if it exists
                                 if (promptTextWidget.inputEl) {
                                     promptTextWidget.inputEl.value = data.prompt_text || "";
+                                    console.log("Updated DOM element value");
+                                } else {
+                                    console.log("No inputEl found on promptTextWidget");
                                 }
                                 
                                 // Trigger the callback to update the node
                                 if (promptTextWidget.callback) {
                                     promptTextWidget.callback(data.prompt_text || "");
+                                    console.log("Called promptTextWidget callback");
+                                } else {
+                                    console.log("No callback found on promptTextWidget");
                                 }
                                 
                                 // Force canvas redraw to show changes
                                 nodeInstance.setDirtyCanvas(true, true);
+                                console.log("Set dirty canvas");
+                            } else {
+                                console.error("API call failed with status:", response.status);
                             }
                         } catch (error) {
                             console.error("Error loading prompt text:", error);
@@ -129,31 +145,38 @@ app.registerExtension({
                     
                     // Override category widget callback
                     categoryWidget.callback = function(value) {
-                        console.log("Category selected:", value);
+                        console.log("=== Category selected ===", value);
                         if (originalCategoryCallback) {
+                            console.log("Calling original category callback");
                             originalCategoryCallback.call(this, value);
                         }
                         if (value) {
+                            console.log("Loading prompts for category:", value);
                             loadPrompts(value);
+                        } else {
+                            console.log("No category value, skipping loadPrompts");
                         }
                     };
                     
                     // Override prompt name widget callback
                     promptNameWidget.callback = function(value) {
-                        console.log("Prompt name selected:", value);
+                        console.log("=== Prompt name selected ===", value);
                         if (originalPromptNameCallback) {
+                            console.log("Calling original prompt name callback");
                             originalPromptNameCallback.call(this, value);
                         }
                         if (value && categoryWidget.value) {
                             console.log("Loading prompt text for category:", categoryWidget.value, "prompt:", value);
                             loadPromptText(categoryWidget.value, value);
+                        } else {
+                            console.log("Missing value or category:", { value, category: categoryWidget.value });
                         }
                     };
                     
                     // Add Save button
                     console.log("Adding Save button");
                     const saveButton = this.addWidget("button", "💾 Save", "", async () => {
-                        console.log("Save button clicked");
+                        console.log("=== Save button clicked ===");
                         const category = categoryWidget.value;
                         const promptName = promptNameWidget.value;
                         const promptText = promptTextWidget.value;
@@ -161,11 +184,13 @@ app.registerExtension({
                         console.log("Save data:", { category, promptName, promptText });
                         
                         if (!category || !promptName) {
-                            console.log("Category and prompt name are required");
+                            console.log("ERROR: Category and prompt name are required");
+                            alert("Category and prompt name are required");
                             return;
                         }
                         
                         try {
+                            console.log("Making API call to /prompt_db_save");
                             const response = await api.fetchApi("/prompt_db_save", {
                                 method: "POST",
                                 headers: {
@@ -178,16 +203,24 @@ app.registerExtension({
                                 })
                             });
                             
+                            console.log("API response status:", response.status);
                             if (response.ok) {
                                 const data = await response.json();
+                                console.log("API response data:", data);
                                 if (data.success) {
-                                    console.log("Prompt saved successfully:", data.message);
+                                    console.log("SUCCESS: Prompt saved successfully:", data.message);
+                                    alert("Prompt saved successfully!");
                                 } else {
-                                    console.error("Save failed:", data.message);
+                                    console.error("ERROR: Save failed:", data.message);
+                                    alert("Save failed: " + data.message);
                                 }
+                            } else {
+                                console.error("ERROR: API call failed with status:", response.status);
+                                alert("API call failed with status: " + response.status);
                             }
                         } catch (error) {
-                            console.error("Error saving prompt:", error);
+                            console.error("ERROR: Exception during save:", error);
+                            alert("Error during save: " + error.message);
                         }
                     }, { serialize: false });
                     console.log("Save button added:", saveButton);
