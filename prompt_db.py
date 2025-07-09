@@ -4,10 +4,6 @@ import folder_paths
 from aiohttp import web
 import server
 
-print("=== PROMPT DB PYTHON MODULE LOADED ===")
-print(f"Module file: {__file__}")
-print(f"Current working directory: {os.getcwd()}")
-
 def get_comfy_path():
     """Get the ComfyUI root directory with fallback methods"""
     try:
@@ -30,7 +26,6 @@ def get_comfy_path():
         # Method 3: Use current working directory as fallback
         return os.getcwd()
     except Exception as e:
-        print(f"Error determining ComfyUI path: {e}")
         # If we can't determine the path, try to find the ComfyUI directory by going up
         current_dir = os.path.dirname(os.path.abspath(__file__))
         while current_dir != os.path.dirname(current_dir):  # Stop at root
@@ -58,7 +53,7 @@ class PromptDB:
                 },
                 "styles": {
                     "cinematic": "cinematic lighting, dramatic shadows, film grain, professional cinematography",
-                    "artistic": "artistic composition, creative lighting, expressive style, fine art photography",
+                    "artistic": "artistic composition, creative lighting, expressive style, kolor fine art photography",
                     "minimalist": "clean composition, minimal background, simple elegant style"
                 },
                 "quality": {
@@ -71,7 +66,6 @@ class PromptDB:
                 os.makedirs(os.path.dirname(self.prompts_file), exist_ok=True)
                 with open(self.prompts_file, 'w', encoding='utf-8') as f:
                     json.dump(default_prompts, f, indent=2, ensure_ascii=False)
-                print(f"Created default prompts.json at {self.prompts_file}")
             except Exception as e:
                 print(f"Error creating prompts.json: {e}")
 
@@ -109,7 +103,6 @@ class PromptDB:
                     os.makedirs(os.path.dirname(prompts_file), exist_ok=True)
                     with open(prompts_file, 'w', encoding='utf-8') as f:
                         json.dump(default_prompts, f, indent=2, ensure_ascii=False)
-                    print(f"Created default prompts.json at {prompts_file}")
                 except Exception as e:
                     print(f"Error creating prompts.json: {e}")
             
@@ -128,7 +121,7 @@ class PromptDB:
                     # Convert to list and ensure consistent ordering
                     prompt_names = sorted(list(all_prompt_names))
                     
-                    # If we have prompts, use the first category's first prompt as default
+                    # Use the first category's first prompt as default
                     if categories and prompt_names:
                         first_category = categories[0]
                         first_category_prompts = list(prompts_db[first_category].keys())
@@ -160,7 +153,7 @@ class PromptDB:
                         if first_category_prompts:
                             default_prompt = first_category_prompts[0]
             except Exception as e:
-                print(f"Error getting default prompt: {e}")
+                pass
         
         if not default_prompt and prompt_names:
             default_prompt = prompt_names[0]
@@ -168,7 +161,7 @@ class PromptDB:
         return {
             "required": {
                 "category": (categories, {"default": categories[0]}),
-                "prompt_name": (prompt_names, {"default": default_prompt, "forceInput": False}),
+                "prompt_name": (prompt_names, {"default": default_prompt}),
                 "prompt_text": ("STRING", {"multiline": True, "default": ""}),
             }
         }
@@ -178,65 +171,9 @@ class PromptDB:
     FUNCTION = "get_prompt"
     CATEGORY = "text"
     
-    # Add this to help with debugging
-    @classmethod
-    def IS_CHANGED(cls):
-        return float("nan")  # Always re-execute
-    
-    def load_prompts_db(self):
-        """Load the prompts database from JSON file"""
-        if os.path.exists(self.prompts_file):
-            try:
-                with open(self.prompts_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, Exception) as e:
-                print(f"Error loading prompts.json: {e}")
-                return {}
-        return {}
-    
-    def save_prompts_db(self, prompts_db):
-        """Save the prompts database to JSON file"""
-        try:
-            os.makedirs(os.path.dirname(self.prompts_file), exist_ok=True)
-            with open(self.prompts_file, 'w', encoding='utf-8') as f:
-                json.dump(prompts_db, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving prompts.json: {e}")
-    
     def get_prompt(self, category="", prompt_name="", prompt_text=""):
         """Return the prompt text"""
         return (prompt_text,)
-
-
-# API endpoint for loading categories
-@server.PromptServer.instance.routes.post("/prompt_db_categories")
-async def load_categories(request):
-    print("=== API: load_categories called ===")
-    try:
-        # Get the ComfyUI root directory
-        comfy_path = get_comfy_path()
-        prompts_file = os.path.join(comfy_path, "prompts.json")
-        print(f"Looking for prompts file at: {prompts_file}")
-        
-        # Load prompts database
-        prompts_db = {}
-        if os.path.exists(prompts_file):
-            try:
-                with open(prompts_file, 'r', encoding='utf-8') as f:
-                    prompts_db = json.load(f)
-                print(f"Loaded prompts database: {list(prompts_db.keys())}")
-            except (json.JSONDecodeError, Exception) as e:
-                print(f"Error loading prompts.json: {e}")
-        else:
-            print("prompts.json file does not exist")
-        
-        categories = list(prompts_db.keys()) if prompts_db else []
-        print(f"Returning categories: {categories}")
-        return web.json_response({"categories": categories})
-        
-    except Exception as e:
-        print(f"Error in load_categories: {e}")
-        return web.json_response({"categories": []}, status=500)
 
 
 # API endpoint for loading prompts in a category
@@ -275,21 +212,17 @@ async def load_prompts(request):
 # API endpoint for loading prompt text
 @server.PromptServer.instance.routes.post("/prompt_db_text")
 async def load_prompt_text(request):
-    print("=== API: load_prompt_text called ===")
     try:
         data = await request.json()
         category = data.get("category", "")
         prompt_name = data.get("prompt_name", "")
-        print(f"Request data: category='{category}', prompt_name='{prompt_name}'")
         
         if not category or not prompt_name:
-            print("Missing category or prompt_name")
             return web.json_response({"prompt_text": ""})
         
         # Get the ComfyUI root directory
         comfy_path = get_comfy_path()
         prompts_file = os.path.join(comfy_path, "prompts.json")
-        print(f"Looking for prompts file at: {prompts_file}")
         
         # Load prompts database
         prompts_db = {}
@@ -297,14 +230,10 @@ async def load_prompt_text(request):
             try:
                 with open(prompts_file, 'r', encoding='utf-8') as f:
                     prompts_db = json.load(f)
-                print(f"Loaded prompts database with categories: {list(prompts_db.keys())}")
             except (json.JSONDecodeError, Exception) as e:
                 print(f"Error loading prompts.json: {e}")
-        else:
-            print("prompts.json file does not exist")
         
         prompt_text = prompts_db.get(category, {}).get(prompt_name, "")
-        print(f"Found prompt text: '{prompt_text}'")
         
         return web.json_response({"prompt_text": prompt_text})
         
@@ -316,22 +245,18 @@ async def load_prompt_text(request):
 # API endpoint for saving prompt text
 @server.PromptServer.instance.routes.post("/prompt_db_save")
 async def save_prompt_text(request):
-    print("=== API: save_prompt_text called ===")
     try:
         data = await request.json()
         category = data.get("category", "")
         prompt_name = data.get("prompt_name", "")
         prompt_text = data.get("prompt_text", "")
-        print(f"Request data: category='{category}', prompt_name='{prompt_name}', prompt_text='{prompt_text[:50]}...'")
         
         if not category or not prompt_name:
-            print("Missing category or prompt_name")
             return web.json_response({"success": False, "message": "Category and prompt name are required"})
         
         # Get the ComfyUI root directory
         comfy_path = get_comfy_path()
         prompts_file = os.path.join(comfy_path, "prompts.json")
-        print(f"Prompts file path: {prompts_file}")
         
         # Load existing prompts database
         prompts_db = {}
@@ -339,20 +264,15 @@ async def save_prompt_text(request):
             try:
                 with open(prompts_file, 'r', encoding='utf-8') as f:
                     prompts_db = json.load(f)
-                print(f"Loaded existing prompts database")
             except (json.JSONDecodeError, Exception) as e:
                 print(f"Error loading prompts.json: {e}")
-        else:
-            print("prompts.json file does not exist, creating new database")
         
         # Ensure category exists
         if category not in prompts_db:
             prompts_db[category] = {}
-            print(f"Created new category: {category}")
         
         # Save the prompt text
         prompts_db[category][prompt_name] = prompt_text
-        print(f"Updated prompt in database")
         
         # Save to file
         try:
@@ -360,7 +280,6 @@ async def save_prompt_text(request):
             with open(prompts_file, 'w', encoding='utf-8') as f:
                 json.dump(prompts_db, f, indent=2, ensure_ascii=False)
             
-            print(f"Saved prompt '{prompt_name}' in category '{category}' to file")
             return web.json_response({"success": True, "message": f"Saved prompt '{prompt_name}'"})
             
         except Exception as e:
@@ -407,9 +326,8 @@ async def create_new_prompt(request):
         try:
             os.makedirs(os.path.dirname(prompts_file), exist_ok=True)
             with open(prompts_file, 'w', encoding='utf-8') as f:
-                json.dump(prompts_db, f, indent=2, ensure_ascii=False)
+                json.dump(prompts_db, f, indent=2, ensure_ascii=2)
             
-            print(f"Created new prompt '{prompt_name}' in category '{category}'")
             return web.json_response({"success": True, "message": f"Created new prompt '{prompt_name}'"})
             
         except Exception as e:
@@ -428,7 +346,3 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptDB": "Prompt Database"
 }
-
-print("=== PROMPT DB NODE MAPPINGS DEFINED ===")
-print(f"NODE_CLASS_MAPPINGS: {NODE_CLASS_MAPPINGS}")
-print(f"NODE_DISPLAY_NAME_MAPPINGS: {NODE_DISPLAY_NAME_MAPPINGS}")
