@@ -209,7 +209,6 @@ app.registerExtension({
                                 console.log("API response data:", data);
                                 if (data.success) {
                                     console.log("SUCCESS: Prompt saved successfully:", data.message);
-                                    alert("Prompt saved successfully!");
                                 } else {
                                     console.error("ERROR: Save failed:", data.message);
                                     alert("Save failed: " + data.message);
@@ -229,6 +228,7 @@ app.registerExtension({
                     console.log("Adding New button");
                     const newButton = this.addWidget("button", "📝 New", "", async () => {
                         console.log("New button clicked");
+                        alert("Creating a new prompt. Please enter the category and prompt name.");
                         const category = prompt("Enter category name:");
                         if (!category) return;
                         
