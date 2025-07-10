@@ -331,7 +331,8 @@ async def create_new_prompt(request):
             except (json.JSONDecodeError, Exception) as e:
                 print(f"Error loading prompts.json: {e}")
         
-        # Ensure category exists
+        # Ensure category exists (create if new, use existing if already exists)
+        is_new_category = category not in prompts_db
         if category not in prompts_db:
             prompts_db[category] = {}
         
@@ -344,7 +345,12 @@ async def create_new_prompt(request):
             with open(prompts_file, 'w', encoding='utf-8') as f:
                 json.dump(prompts_db, f, indent=2, ensure_ascii=False)
             
-            return web.json_response({"success": True, "message": f"Created new prompt '{prompt_name}'"})
+            if is_new_category:
+                message = f"Created new category '{category}' and added prompt '{prompt_name}'"
+            else:
+                message = f"Added prompt '{prompt_name}' to existing category '{category}'"
+            
+            return web.json_response({"success": True, "message": message})
             
         except Exception as e:
             print(f"Error saving prompts.json: {e}")

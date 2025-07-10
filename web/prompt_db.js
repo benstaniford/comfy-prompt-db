@@ -176,18 +176,27 @@ app.registerExtension({
                     });
                     
                     // Add input fields for new prompt creation
-                    const newCategoryWidget = this.addWidget("text", "New Category", "", null);
+                    const newCategoryWidget = this.addWidget("text", "New/Existing Category", "", null);
+                    // Add helpful placeholder if the input element supports it
+                    if (newCategoryWidget.inputEl) {
+                        newCategoryWidget.inputEl.placeholder = "Enter category name...";
+                        newCategoryWidget.inputEl.title = "Enter a new category name to create it, or an existing category name to add a prompt to it";
+                    }
                     
                     const newPromptNameWidget = this.addWidget("text", "New Prompt Name", "", null);
+                    if (newPromptNameWidget.inputEl) {
+                        newPromptNameWidget.inputEl.placeholder = "Enter prompt name...";
+                        newPromptNameWidget.inputEl.title = "Enter a unique name for your new prompt";
+                    }
                     
                     // Add New button
-                    const newButton = this.addWidget("button", "📝 Create", "", async () => {
+                    const newButton = this.addWidget("button", "📝 Add Prompt", "", async () => {
                         
                         const category = newCategoryWidget.value?.trim();
                         const promptName = newPromptNameWidget.value?.trim();
                         
                         if (!category) {
-                            alert("Please enter a category name");
+                            alert("Please enter a category name (new or existing)");
                             return;
                         }
                         
