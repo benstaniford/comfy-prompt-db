@@ -21,7 +21,7 @@ app.registerExtension({
                 if (categoryWidget && promptNameWidget && promptTextWidget) {
                     
                     // Function to load prompts for a category
-                    const loadPrompts = async (category) => {
+                    const loadPrompts = async (category, preserveCurrentSelection = false) => {
                         try {
                             const response = await api.fetchApi("/prompt_db_prompts", {
                                 method: "POST",
@@ -39,7 +39,13 @@ app.registerExtension({
                                 // Update the prompt name dropdown values
                                 if (data.prompts && data.prompts.length > 0) {
                                     promptNameWidget.options.values = data.prompts;
-                                    promptNameWidget.value = data.prompts[0];
+                                    
+                                    // Only set to first prompt if we're not preserving current selection
+                                    // or if current selection is not in the new list
+                                    const currentValue = promptNameWidget.value;
+                                    if (!preserveCurrentSelection || !data.prompts.includes(currentValue)) {
+                                        promptNameWidget.value = data.prompts[0];
+                                    }
                                     
                                     // If widget has an input element, update it
                                     if (promptNameWidget.inputEl) {
@@ -50,11 +56,11 @@ app.registerExtension({
                                             option.textContent = prompt;
                                             promptNameWidget.inputEl.appendChild(option);
                                         });
-                                        promptNameWidget.inputEl.value = data.prompts[0];
+                                        promptNameWidget.inputEl.value = promptNameWidget.value;
                                     }
                                     
-                                    // Load text for the first prompt
-                                    await loadPromptText(category, data.prompts[0]);
+                                    // Load text for the current prompt (not necessarily the first one)
+                                    await loadPromptText(category, promptNameWidget.value);
                                 } else {
                                     promptNameWidget.options.values = [];
                                     promptNameWidget.value = "";
@@ -260,8 +266,8 @@ app.registerExtension({
                     
                     // Initialize with current category
                     if (categoryWidget.value) {
-                        // Load prompts for the current category
-                        loadPrompts(categoryWidget.value).then(() => {
+                        // Load prompts for the current category, preserving current selection
+                        loadPrompts(categoryWidget.value, true).then(() => {
                             // After loading prompts, load the text for the current prompt
                             if (promptNameWidget.value) {
                                 loadPromptText(categoryWidget.value, promptNameWidget.value);
@@ -269,65 +275,37 @@ app.registerExtension({
                         });
                     }
                     
-                    // Add serialization handlers to ensure values persist
+                    // Let ComfyUI handle widget serialization naturally
                     this.serialize_widgets = true;
                     
-                    // Override serialize to ensure our widget values are saved
-                    const originalSerialize = this.serialize;
-                    this.serialize = function() {
-                        const data = originalSerialize ? originalSerialize.call(this) : {};
-                        
-                        // Only serialize the core widgets, not the buttons
-                        const coreWidgets = ["category", "prompt_name", "prompt_text"];
-                        if (this.widgets) {
-                            data.widgets_values = [];
-                            for (let i = 0; i < this.widgets.length; i++) {
-                                const widget = this.widgets[i];
-                                if (coreWidgets.includes(widget.name)) {
-                                    data.widgets_values[i] = widget.value;
-                                }
-                            }
-                            // Temporary debug log
-                            console.log("SERIALIZE - Saved widget values:", data.widgets_values);
+                    // Override onConfigure to handle prompt text loading after widget restoration
+                    const originalOnConfigure = this.onConfigure;
+                    this.onConfigure = function(info) {
+                        // Let ComfyUI restore the widget values first
+                        if (originalOnConfigure) {
+                            originalOnConfigure.call(this, info);
                         }
                         
-                        return data;
-                    };
-                    
-                    // Override configure to restore widget values
-                    const originalConfigure = this.configure;
-                    this.configure = function(info) {
-                        if (originalConfigure) {
-                            originalConfigure.call(this, info);
-                        }
-                        
-                        // Restore widget values for core widgets only
-                        const coreWidgets = ["category", "prompt_name", "prompt_text"];
-                        if (info.widgets_values && this.widgets) {
-                            // Temporary debug log
-                            console.log("CONFIGURE - Restoring widget values:", info.widgets_values);
-                            for (let i = 0; i < this.widgets.length && i < info.widgets_values.length; i++) {
-                                const widget = this.widgets[i];
-                                if (coreWidgets.includes(widget.name) && info.widgets_values[i] !== undefined) {
-                                    widget.value = info.widgets_values[i];
-                                    if (widget.inputEl) {
-                                        widget.inputEl.value = info.widgets_values[i];
-                                    }
-                                    console.log(`CONFIGURE - Restored ${widget.name} = ${info.widgets_values[i]}`);
-                                }
-                            }
+                        // After widgets are restored, load the prompts and text
+                        setTimeout(() => {
+                            const categoryWidget = this.widgets?.find(w => w.name === "category");
+                            const promptNameWidget = this.widgets?.find(w => w.name === "prompt_name");
+                            const promptTextWidget = this.widgets?.find(w => w.name === "prompt_text");
                             
-                            // After restoring values, reload the prompt text if we have valid category and prompt name
-                            setTimeout(() => {
-                                const categoryWidget = this.widgets?.find(w => w.name === "category");
-                                const promptNameWidget = this.widgets?.find(w => w.name === "prompt_name");
-                                
-                                if (categoryWidget && promptNameWidget && categoryWidget.value && promptNameWidget.value) {
-                                    console.log("CONFIGURE - Loading prompt text for:", categoryWidget.value, promptNameWidget.value);
-                                    loadPromptText(categoryWidget.value, promptNameWidget.value);
-                                }
-                            }, 100);
-                        }
+                            console.log("ONCONFIGURE - Category:", categoryWidget?.value);
+                            console.log("ONCONFIGURE - Prompt Name:", promptNameWidget?.value);
+                            console.log("ONCONFIGURE - Prompt Text:", promptTextWidget?.value);
+                            console.log("ONCONFIGURE - widgets_values:", info?.widgets_values);
+                            
+                            if (categoryWidget && categoryWidget.value) {
+                                // Load prompts for this category, preserving the current prompt selection
+                                loadPrompts(categoryWidget.value, true).then(() => {
+                                    if (promptNameWidget && promptNameWidget.value) {
+                                        loadPromptText(categoryWidget.value, promptNameWidget.value);
+                                    }
+                                });
+                            }
+                        }, 200);
                     };
                     
                     // Force the node to resize to show the new buttons
