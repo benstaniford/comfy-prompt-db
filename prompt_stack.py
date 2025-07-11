@@ -3,6 +3,17 @@ import json
 from .prompt_db import get_user_db_path, DEFAULT_PROMPTS
 
 
+def log(msg):
+    try:
+        home = os.environ.get('HOME') or os.environ.get('USERPROFILE') or os.path.expanduser('~')
+        log_file = os.path.join(home, 'pylog.txt')
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(msg + '\n')
+    except Exception as e:
+        # If logging fails, print to stdout as a fallback
+        print(f"Logging failed: {e}")
+
+
 class PromptStack:
     """A node that allows stacking multiple prompts from the database into a single output"""
     
@@ -80,6 +91,7 @@ class PromptStack:
     
     def stack_prompts(self, separator=", ", **kwargs):
         """Stack multiple prompts from the database into a single string"""
+        log(f"[PromptStack] stack_prompts called with separator='{separator}' and kwargs={kwargs}")
         stacked_prompts = []
         
         # Load the prompts database
@@ -88,8 +100,11 @@ class PromptStack:
             try:
                 with open(self.prompts_file, 'r', encoding='utf-8') as f:
                     prompts_db = json.load(f)
+                log(f"[PromptStack] Loaded prompts_db with categories: {list(prompts_db.keys())}")
             except (json.JSONDecodeError, Exception) as e:
-                print(f"Error loading prompts.json in PromptStack: {e}")
+                log(f"[PromptStack] Error loading prompts.json: {e}")
+        else:
+            log(f"[PromptStack] prompts_file does not exist: {self.prompts_file}")
         
         # Process prompt entries in order
         prompt_num = 1
@@ -97,24 +112,34 @@ class PromptStack:
             category_key = f"prompt_{prompt_num}_category"
             name_key = f"prompt_{prompt_num}_name"
             enabled_key = f"prompt_{prompt_num}_enabled"
+            log(f"[PromptStack] Checking keys: {category_key}, {name_key}, {enabled_key}")
             
             # Check if this prompt entry exists in kwargs
             if category_key not in kwargs or name_key not in kwargs:
+                log(f"[PromptStack] Key(s) missing in kwargs. Breaking loop at prompt_num={prompt_num}")
                 break
                 
             # Get the values for this prompt entry
             category = kwargs.get(category_key, "")
             prompt_name = kwargs.get(name_key, "")
             enabled = kwargs.get(enabled_key, True)
+            log(f"[PromptStack] Entry {prompt_num}: category='{category}', prompt_name='{prompt_name}', enabled={enabled}")
             
             # If enabled and both category and name are provided, get the prompt text
             if enabled and category and prompt_name:
                 prompt_text = prompts_db.get(category, {}).get(prompt_name, "")
+                log(f"[PromptStack] prompt_text for category='{category}', prompt_name='{prompt_name}': '{prompt_text}'")
                 if prompt_text:
                     stacked_prompts.append(prompt_text)
+                    log(f"[PromptStack] Added prompt_text to stacked_prompts.")
+                else:
+                    log(f"[PromptStack] No prompt_text found for category='{category}', prompt_name='{prompt_name}'")
+            else:
+                log(f"[PromptStack] Entry {prompt_num} skipped (enabled={enabled}, category='{category}', prompt_name='{prompt_name}')")
             
             prompt_num += 1
         
         # Join all prompts with the separator
         result = separator.join(stacked_prompts)
+        log(f"[PromptStack] Final stacked result: '{result}'")
         return (result,)
