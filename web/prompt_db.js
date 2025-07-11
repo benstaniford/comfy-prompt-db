@@ -301,11 +301,6 @@ app.registerExtension({
                             const promptNameWidget = this.widgets?.find(w => w.name === "prompt_name");
                             const promptTextWidget = this.widgets?.find(w => w.name === "prompt_text");
                             
-                            console.log("ONCONFIGURE - Category:", categoryWidget?.value);
-                            console.log("ONCONFIGURE - Prompt Name:", promptNameWidget?.value);
-                            console.log("ONCONFIGURE - Prompt Text:", promptTextWidget?.value);
-                            console.log("ONCONFIGURE - widgets_values:", info?.widgets_values);
-                            
                             // Use the restored value from widgets_values (index 1 for prompt_name)
                             const restoredPromptName = info?.widgets_values?.[1];
                             if (categoryWidget && categoryWidget.value) {
