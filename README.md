@@ -1,16 +1,19 @@
 # Prompt Database for ComfyUI
 
-A ComfyUI custom node that provides a database-driven prompt management system. Store, organize, and edit prompts in categories with persistent JSON storage.
+A ComfyUI custom node package that provides database-driven prompt management. Store, organize, and edit prompts in categories with persistent JSON storage.
 
 ## Features
 
+- **Two Node Types**: 
+  - **Prompt Database**: Single prompt editor with category/prompt selection
+  - **Prompt Stack**: Stack multiple prompts from different categories into one output
 - **Category-based Organization**: Organize prompts into logical categories
 - **Dropdown Selection**: Easy category and prompt selection via dropdown menus
-- **Editable Prompts**: Edit prompt text directly in the node interface
+- **Editable Prompts**: Edit prompt text directly in the Prompt Database node
 - **Persistent Storage**: All prompts stored in `user/default/user-db/prompts.json` in your ComfyUI directory
 - **Save/Load Functionality**: Save changes back to the database instantly
-- **Create or Update Prompts**: Add new categories and prompts, or update existing ones, all with the Save button
-- **No Inputs Required**: Standalone text generation node
+- **Create or Update Prompts**: Add new categories and prompts, or update existing ones
+- **No Inputs Required**: Both nodes are standalone text generation nodes
 
 ## Installation
 
@@ -28,7 +31,9 @@ A ComfyUI custom node that provides a database-driven prompt management system. 
    ```
 2. Restart ComfyUI
 
-## Usage
+## Nodes
+
+### Prompt Database Node
 
 1. Add the "Prompt Database" node from the "text" category
 2. Select a category from the first dropdown menu
@@ -39,19 +44,34 @@ A ComfyUI custom node that provides a database-driven prompt management system. 
 7. Click "💾 Save" to create a new category or prompt, or to update an existing one
 8. Connect the output to other nodes that accept text input
 
-### How to Add or Update Prompts and Categories
+#### How to Add or Update Prompts and Categories
 - **To add a new category:** Enter a new category name in the "Add/Update Category" text field, enter a prompt name, and click "💾 Save". The new category and prompt will be created.
 - **To add a new prompt to an existing category:** Select the category from the dropdown, enter a new prompt name in the "Add/Update Prompt Name" text field, and click "💾 Save".
 - **To update an existing prompt:** Select the category and prompt from the dropdowns, edit the prompt text, and click "💾 Save".
 - The text fields below the dropdowns always reflect the current selection, but you can overwrite them to create new entries.
 
+### Prompt Stack Node
+
+1. Add the "Prompt Stack" node from the "text" category
+2. For each prompt entry:
+   - Toggle the enabled checkbox to include/exclude the prompt
+   - Select a category from the dropdown
+   - Select a prompt name from the dropdown (updates automatically when category changes)
+3. Use the "➕ Add Prompt Entry" button to add more prompts to the stack
+4. Use the "❌ Remove Entry X" button to remove individual entries (except the first one)
+5. Set the separator string (default is ", ") to control how prompts are joined
+6. The output will be all enabled prompts concatenated with the separator
+7. Connect the output to other nodes that accept text input
+
 ## Node Details
 
-**Inputs:**
-- None - this is a standalone text generation node
+### Prompt Database Node
+**Inputs:** None - this is a standalone text generation node  
+**Outputs:** `prompt_text`: The selected/edited prompt text as a string
 
-**Outputs:**
-- `prompt_text`: The selected/edited prompt text as a string
+### Prompt Stack Node
+**Inputs:** None - this is a standalone text generation node  
+**Outputs:** `stacked_prompts`: All enabled prompts concatenated with the separator as a string
 
 ## Database Structure
 
