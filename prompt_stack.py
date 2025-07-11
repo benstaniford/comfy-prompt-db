@@ -1,7 +1,6 @@
 import os
 import json
 from .prompt_db import get_user_db_path, DEFAULT_PROMPTS
-from .pylog import log
 
 class AnyType(str):
   """A special class that is always equal in not equal comparisons. Credit to pythongosssss"""
@@ -103,18 +102,16 @@ class PromptStack:
     CATEGORY = "text"
     
     def stack_prompts(self, separator=", ", **kwargs):
-        log(f"[PromptStack] stack_prompts called with separator='{separator}' and kwargs={kwargs}")
         stacked_prompts = []
         prompts_db = {}
         if os.path.exists(self.prompts_file):
             try:
                 with open(self.prompts_file, 'r', encoding='utf-8') as f:
                     prompts_db = json.load(f)
-                log(f"[PromptStack] Loaded prompts_db with categories: {list(prompts_db.keys())}")
             except (json.JSONDecodeError, Exception) as e:
-                log(f"[PromptStack] Error loading prompts.json: {e}")
+                pass
         else:
-            log(f"[PromptStack] prompts_file does not exist: {self.prompts_file}")
+            pass
 
         # Find all prompt entries by scanning for keys like prompt_N_category
         prompt_indices = set()
@@ -129,17 +126,13 @@ class PromptStack:
             cat = kwargs.get(f'prompt_{idx}_category', None)
             name = kwargs.get(f'prompt_{idx}_name', None)
             enabled = kwargs.get(f'prompt_{idx}_enabled', True)
-            log(f"[PromptStack] Entry {idx}: category='{cat}', prompt_name='{name}', enabled={enabled}")
             if enabled and cat and name:
                 prompt_text = prompts_db.get(cat, {}).get(name, "")
-                log(f"[PromptStack] prompt_text for category='{cat}', prompt_name='{name}': '{prompt_text}'")
                 if prompt_text:
                     stacked_prompts.append(prompt_text)
-                    log(f"[PromptStack] Added prompt_text to stacked_prompts.")
                 else:
-                    log(f"[PromptStack] No prompt_text found for category='{cat}', prompt_name='{name}'")
+                    pass
             else:
-                log(f"[PromptStack] Entry {idx} skipped (enabled={enabled}, category='{cat}', prompt_name='{name}')")
+                pass
         result = separator.join(stacked_prompts)
-        log(f"[PromptStack] Final stacked result: '{result}'")
         return (result,)
