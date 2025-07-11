@@ -82,68 +82,62 @@ app.registerExtension({
                 setupCategoryHandler(1);
                 
                 // Function to add a new prompt entry
-                const addPromptEntry = () => {
-                    const entryNum = this.widgets.filter(w => w.name.startsWith("prompt_") && w.name.endsWith("_category")).length + 1;
-                    
-                    // Get categories from the first category widget
+                const addPromptEntry = async () => {
+                    // Count current prompt entries by enabled toggles
+                    const entryNum = this.widgets.filter(w => w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
+
+                    // Get categories and prompts from the first entry
                     const firstCategoryWidget = this.widgets.find(w => w.name === "prompt_1_category");
                     const firstPromptWidget = this.widgets.find(w => w.name === "prompt_1_name");
-                    
+
                     if (firstCategoryWidget && firstPromptWidget) {
                         const categories = firstCategoryWidget.options.values;
-                        const prompts = firstPromptWidget.options.values;
-                        
-                        // Find the separator widget to insert before it
-                        const separatorWidget = this.widgets.find(w => w.name === "separator");
-                        const separatorIndex = separatorWidget ? this.widgets.indexOf(separatorWidget) : -1;
-                        
+                        let selectedCategory = categories[0];
+                        let prompts = [];
+                        if (selectedCategory) {
+                            prompts = await loadPrompts(selectedCategory);
+                        }
+                        // Default to first prompt name if available
+                        let selectedPrompt = prompts.length > 0 ? prompts[0] : "";
+
                         // Add enabled checkbox
-                        const enabledWidget = this.addWidget("toggle", `prompt_${entryNum}_enabled`, true, null);
-                        
+                        const enabledWidget = this.addWidget("toggle", selectedPrompt, true, null);
                         // Add category dropdown
-                        const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, categories[0], null);
+                        const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null);
                         categoryWidget.options = { values: [...categories] };
-                        
                         // Add prompt name dropdown
-                        const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, prompts[0], null);
+                        const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null);
                         promptWidget.options = { values: [...prompts] };
-                        
+
                         // Set up category change handler
                         setupCategoryHandler(entryNum);
-                        
+
                         // Add remove button for this entry
                         const removeButton = this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
-                            // Remove the widgets for this entry
-                            const widgetsToRemove = this.widgets.filter(w => 
+                            const widgetsToRemove = this.widgets.filter(w =>
                                 w.name === `prompt_${entryNum}_enabled` ||
                                 w.name === `prompt_${entryNum}_category` ||
                                 w.name === `prompt_${entryNum}_name` ||
                                 w.name === `❌ Remove Entry ${entryNum}`
                             );
-                            
                             widgetsToRemove.forEach(widget => {
                                 const index = this.widgets.indexOf(widget);
                                 if (index > -1) {
                                     this.widgets.splice(index, 1);
                                 }
                             });
-                            
-                            // Recompute size and redraw
                             this.computeSize();
                             this.setDirtyCanvas(true, true);
                         });
-                        
                         // Load initial prompts for the new category
                         updatePromptDropdown(categoryWidget, promptWidget);
                     }
-                    
-                    // Recompute size and redraw
                     this.computeSize();
                     this.setDirtyCanvas(true, true);
                 };
                 
                 // Add the "Add Prompt" button
-                const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", addPromptEntry);
+                const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry(); });
                 
                 // Let ComfyUI handle widget serialization
                 this.serialize_widgets = true;
