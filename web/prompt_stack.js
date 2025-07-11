@@ -78,68 +78,67 @@ app.registerExtension({
                     }
                 };
                 
-                // Track how many entries are currently visible
-                let visibleEntries = 1;
+                // Set up the first entry
+                setupCategoryHandler(1);
                 
-                // Initially hide all entries except the first one
-                for (let i = 2; i <= 10; i++) {
-                    const categoryWidget = this.widgets.find(w => w.name === `prompt_${i}_category`);
-                    const promptWidget = this.widgets.find(w => w.name === `prompt_${i}_name`);
-                    const enabledWidget = this.widgets.find(w => w.name === `prompt_${i}_enabled`);
-                    
-                    if (categoryWidget) categoryWidget.type = "hidden";
-                    if (promptWidget) promptWidget.type = "hidden";
-                    if (enabledWidget) enabledWidget.type = "hidden";
-                }
-                
-                // Set up category handlers for all entries
-                for (let i = 1; i <= 10; i++) {
-                    setupCategoryHandler(i);
-                }
-                
-                // Function to show the next available entry
-                const showNextEntry = () => {
-                    if (visibleEntries < 10) {
-                        visibleEntries++;
-                        const categoryWidget = this.widgets.find(w => w.name === `prompt_${visibleEntries}_category`);
-                        const promptWidget = this.widgets.find(w => w.name === `prompt_${visibleEntries}_name`);
-                        const enabledWidget = this.widgets.find(w => w.name === `prompt_${visibleEntries}_enabled`);
-                        
-                        if (categoryWidget) categoryWidget.type = "combo";
-                        if (promptWidget) promptWidget.type = "combo";
-                        if (enabledWidget) enabledWidget.type = "toggle";
-                        
-                        this.computeSize();
-                        this.setDirtyCanvas(true, true);
+                // Function to add a new prompt entry
+                const addPromptEntry = async () => {
+                    // Count current prompt entries by enabled toggles
+                    const entryNum = this.widgets.filter(w => w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
+
+                    // Get categories and prompts from the first entry
+                    const firstCategoryWidget = this.widgets.find(w => w.name === "prompt_1_category");
+                    const firstPromptWidget = this.widgets.find(w => w.name === "prompt_1_name");
+
+                    if (firstCategoryWidget && firstPromptWidget) {
+                        const categories = firstCategoryWidget.options.values;
+                        // Use the currently selected category from the first widget, not the first category
+                        let selectedCategory = firstCategoryWidget.value || categories[0];
+                        let prompts = [];
+                        if (selectedCategory) {
+                            prompts = await loadPrompts(selectedCategory);
+                        }
+                        // Use the currently selected prompt from the first widget, not the first prompt
+                        let selectedPrompt = firstPromptWidget.value || (prompts.length > 0 ? prompts[0] : "");
+
+                        // Add enabled checkbox
+                        const enabledWidget = this.addWidget("toggle", selectedPrompt, true, null);
+                        // Add category dropdown
+                        const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null);
+                        categoryWidget.options = { values: [...categories] };
+                        // Add prompt name dropdown
+                        const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null);
+                        promptWidget.options = { values: [...prompts] };
+
+                        // Set up category change handler
+                        setupCategoryHandler(entryNum);
+
+                        // Add remove button for this entry
+                        const removeButton = this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
+                            const widgetsToRemove = this.widgets.filter(w =>
+                                w.name === `prompt_${entryNum}_enabled` ||
+                                w.name === `prompt_${entryNum}_category` ||
+                                w.name === `prompt_${entryNum}_name` ||
+                                w.name === `❌ Remove Entry ${entryNum}`
+                            );
+                            widgetsToRemove.forEach(widget => {
+                                const index = this.widgets.indexOf(widget);
+                                if (index > -1) {
+                                    this.widgets.splice(index, 1);
+                                }
+                            });
+                            this.computeSize();
+                            this.setDirtyCanvas(true, true);
+                        });
+                        // Load initial prompts for the new category
+                        updatePromptDropdown(categoryWidget, promptWidget);
                     }
-                };
-                
-                // Function to hide the last visible entry (except the first one)
-                const hideLastEntry = () => {
-                    if (visibleEntries > 1) {
-                        const categoryWidget = this.widgets.find(w => w.name === `prompt_${visibleEntries}_category`);
-                        const promptWidget = this.widgets.find(w => w.name === `prompt_${visibleEntries}_name`);
-                        const enabledWidget = this.widgets.find(w => w.name === `prompt_${visibleEntries}_enabled`);
-                        
-                        if (categoryWidget) categoryWidget.type = "hidden";
-                        if (promptWidget) promptWidget.type = "hidden";
-                        if (enabledWidget) enabledWidget.type = "hidden";
-                        
-                        visibleEntries--;
-                        this.computeSize();
-                        this.setDirtyCanvas(true, true);
-                    }
+                    this.computeSize();
+                    this.setDirtyCanvas(true, true);
                 };
                 
                 // Add the "Add Prompt" button
-                const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { 
-                    showNextEntry(); 
-                });
-                
-                // Add the "Remove Prompt" button
-                const removeButton = this.addWidget("button", "➖ Remove Last Entry", "", () => { 
-                    hideLastEntry(); 
-                });
+                const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry(); });
                 
                 // Let ComfyUI handle widget serialization
                 this.serialize_widgets = true;
