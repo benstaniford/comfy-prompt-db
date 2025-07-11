@@ -21,7 +21,7 @@ app.registerExtension({
                 if (categoryWidget && promptNameWidget && promptTextWidget) {
                     
                     // Function to load prompts for a category
-                    const loadPrompts = async (category, preserveCurrentSelection = false) => {
+                    const loadPrompts = async (category, preserveCurrentSelection = false, desiredPromptName = null) => {
                         try {
                             const response = await api.fetchApi("/prompt_db_prompts", {
                                 method: "POST",
@@ -40,12 +40,12 @@ app.registerExtension({
                                 if (data.prompts && data.prompts.length > 0) {
                                     promptNameWidget.options.values = data.prompts;
                                     
-                                    // Only set to first prompt if we're not preserving current selection
-                                    // or if current selection is not in the new list
-                                    const currentValue = promptNameWidget.value;
-                                    if (!preserveCurrentSelection || !data.prompts.includes(currentValue)) {
-                                        promptNameWidget.value = data.prompts[0];
+                                    // Use desiredPromptName if provided, otherwise preserve current selection
+                                    let targetPrompt = desiredPromptName ?? promptNameWidget.value;
+                                    if (!data.prompts.includes(targetPrompt)) {
+                                        targetPrompt = data.prompts[0];
                                     }
+                                    promptNameWidget.value = targetPrompt;
                                     
                                     // If widget has an input element, update it
                                     if (promptNameWidget.inputEl) {
@@ -306,13 +306,11 @@ app.registerExtension({
                             console.log("ONCONFIGURE - Prompt Text:", promptTextWidget?.value);
                             console.log("ONCONFIGURE - widgets_values:", info?.widgets_values);
                             
+                            // Use the restored value from widgets_values (index 1 for prompt_name)
+                            const restoredPromptName = info?.widgets_values?.[1];
                             if (categoryWidget && categoryWidget.value) {
-                                // Load prompts for this category, preserving the current prompt selection
-                                loadPrompts(categoryWidget.value, true).then(() => {
-                                    if (promptNameWidget && promptNameWidget.value) {
-                                        loadPromptText(categoryWidget.value, promptNameWidget.value);
-                                    }
-                                });
+                                // Load prompts for this category, and try to restore the prompt_name
+                                loadPrompts(categoryWidget.value, true, restoredPromptName);
                             }
                         }, 200);
                     };
