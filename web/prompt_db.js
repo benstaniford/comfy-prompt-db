@@ -146,8 +146,66 @@ app.registerExtension({
                         }
                     };
                     
-                    // Add Save button
-                    const saveButton = this.addWidget("button", "💾 Save", "", async () => {
+                    // Add input fields for new prompt creation
+                    const newCategoryWidget = this.addWidget("text", "New/Existing Category", "", null);
+                    // Add helpful placeholder if the input element supports it
+                    if (newCategoryWidget.inputEl) {
+                        newCategoryWidget.inputEl.placeholder = "Enter category name...";
+                        newCategoryWidget.inputEl.title = "Enter a new category name to create it, or an existing category name to add a prompt to it";
+                    }
+                    
+                    const newPromptNameWidget = this.addWidget("text", "New Prompt Name", "", null);
+                    if (newPromptNameWidget.inputEl) {
+                        newPromptNameWidget.inputEl.placeholder = "Enter prompt name...";
+                        newPromptNameWidget.inputEl.title = "Enter a unique name for your new prompt";
+                    }
+                    
+                    // Initialize with current category
+                    if (categoryWidget.value) {
+                        // Load prompts for the current category, preserving current selection
+                        loadPrompts(categoryWidget.value, true).then(() => {
+                            // After loading prompts, load the text for the current prompt
+                            if (promptNameWidget.value) {
+                                loadPromptText(categoryWidget.value, promptNameWidget.value);
+                            }
+                        });
+                    }
+                    
+                    // Let ComfyUI handle widget serialization naturally
+                    this.serialize_widgets = true;
+                    
+                    // Override onConfigure to handle prompt text loading after widget restoration
+                    const originalOnConfigure = this.onConfigure;
+                    this.onConfigure = function(info) {
+                        // Let ComfyUI restore the widget values first
+                        if (originalOnConfigure) {
+                            originalOnConfigure.call(this, info);
+                        }
+                        
+                        // After widgets are restored, load the prompts and text
+                        setTimeout(() => {
+                            const categoryWidget = this.widgets?.find(w => w.name === "category");
+                            const promptNameWidget = this.widgets?.find(w => w.name === "prompt_name");
+                            const promptTextWidget = this.widgets?.find(w => w.name === "prompt_text");
+                            
+                            // Use the restored value from widgets_values (index 1 for prompt_name)
+                            const restoredPromptName = info?.widgets_values?.[1];
+                            if (categoryWidget && categoryWidget.value) {
+                                // Load prompts for this category, and try to restore the prompt_name
+                                loadPrompts(categoryWidget.value, true, restoredPromptName);
+                                // Also update the text fields
+                                newCategoryWidget.value = categoryWidget.value;
+                                if (newCategoryWidget.inputEl) newCategoryWidget.inputEl.value = categoryWidget.value;
+                                if (restoredPromptName) {
+                                    newPromptNameWidget.value = restoredPromptName;
+                                    if (newPromptNameWidget.inputEl) newPromptNameWidget.inputEl.value = restoredPromptName;
+                                }
+                            }
+                        }, 200);
+                    };
+                    
+                    // Move Save button to the bottom, after all other widgets
+                    const saveButton = this.addWidget("button", "\uD83D\uDCBE Save", "", async () => {
                         const category = categoryWidget.value;
                         const promptName = promptNameWidget.value;
                         const promptText = promptTextWidget.value;
@@ -236,64 +294,6 @@ app.registerExtension({
                             alert("Error during save: " + error.message);
                         }
                     });
-                    
-                    // Add input fields for new prompt creation
-                    const newCategoryWidget = this.addWidget("text", "New/Existing Category", "", null);
-                    // Add helpful placeholder if the input element supports it
-                    if (newCategoryWidget.inputEl) {
-                        newCategoryWidget.inputEl.placeholder = "Enter category name...";
-                        newCategoryWidget.inputEl.title = "Enter a new category name to create it, or an existing category name to add a prompt to it";
-                    }
-                    
-                    const newPromptNameWidget = this.addWidget("text", "New Prompt Name", "", null);
-                    if (newPromptNameWidget.inputEl) {
-                        newPromptNameWidget.inputEl.placeholder = "Enter prompt name...";
-                        newPromptNameWidget.inputEl.title = "Enter a unique name for your new prompt";
-                    }
-                    
-                    // Initialize with current category
-                    if (categoryWidget.value) {
-                        // Load prompts for the current category, preserving current selection
-                        loadPrompts(categoryWidget.value, true).then(() => {
-                            // After loading prompts, load the text for the current prompt
-                            if (promptNameWidget.value) {
-                                loadPromptText(categoryWidget.value, promptNameWidget.value);
-                            }
-                        });
-                    }
-                    
-                    // Let ComfyUI handle widget serialization naturally
-                    this.serialize_widgets = true;
-                    
-                    // Override onConfigure to handle prompt text loading after widget restoration
-                    const originalOnConfigure = this.onConfigure;
-                    this.onConfigure = function(info) {
-                        // Let ComfyUI restore the widget values first
-                        if (originalOnConfigure) {
-                            originalOnConfigure.call(this, info);
-                        }
-                        
-                        // After widgets are restored, load the prompts and text
-                        setTimeout(() => {
-                            const categoryWidget = this.widgets?.find(w => w.name === "category");
-                            const promptNameWidget = this.widgets?.find(w => w.name === "prompt_name");
-                            const promptTextWidget = this.widgets?.find(w => w.name === "prompt_text");
-                            
-                            // Use the restored value from widgets_values (index 1 for prompt_name)
-                            const restoredPromptName = info?.widgets_values?.[1];
-                            if (categoryWidget && categoryWidget.value) {
-                                // Load prompts for this category, and try to restore the prompt_name
-                                loadPrompts(categoryWidget.value, true, restoredPromptName);
-                                // Also update the text fields
-                                newCategoryWidget.value = categoryWidget.value;
-                                if (newCategoryWidget.inputEl) newCategoryWidget.inputEl.value = categoryWidget.value;
-                                if (restoredPromptName) {
-                                    newPromptNameWidget.value = restoredPromptName;
-                                    if (newPromptNameWidget.inputEl) newPromptNameWidget.inputEl.value = restoredPromptName;
-                                }
-                            }
-                        }, 200);
-                    };
                     
                     // Force the node to resize to show the new buttons
                     this.computeSize();
