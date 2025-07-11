@@ -65,10 +65,37 @@ class PromptStack:
                 "separator": ("STRING", {"default": ", ", "multiline": False}),
             },
             "optional": {
-                # First prompt entry
+                # Pre-declare multiple prompt entries so ComfyUI recognizes them
                 "prompt_1_category": (categories, {"default": categories[0]}),
                 "prompt_1_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
                 "prompt_1_enabled": ("BOOLEAN", {"default": True}),
+                "prompt_2_category": (categories, {"default": categories[0]}),
+                "prompt_2_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_2_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_3_category": (categories, {"default": categories[0]}),
+                "prompt_3_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_3_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_4_category": (categories, {"default": categories[0]}),
+                "prompt_4_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_4_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_5_category": (categories, {"default": categories[0]}),
+                "prompt_5_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_5_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_6_category": (categories, {"default": categories[0]}),
+                "prompt_6_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_6_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_7_category": (categories, {"default": categories[0]}),
+                "prompt_7_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_7_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_8_category": (categories, {"default": categories[0]}),
+                "prompt_8_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_8_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_9_category": (categories, {"default": categories[0]}),
+                "prompt_9_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_9_enabled": ("BOOLEAN", {"default": False}),
+                "prompt_10_category": (categories, {"default": categories[0]}),
+                "prompt_10_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+                "prompt_10_enabled": ("BOOLEAN", {"default": False}),
             },
             "hidden": {},
         }
@@ -81,6 +108,9 @@ class PromptStack:
     def stack_prompts(self, separator=", ", **kwargs):
         """Stack multiple prompts from the database into a single string"""
         stacked_prompts = []
+        
+        # Debug: Print all kwargs to understand what's being passed
+        print(f"PromptStack kwargs: {kwargs}")
         
         # Load the prompts database
         prompts_db = {}
@@ -100,6 +130,7 @@ class PromptStack:
             
             # Check if this prompt entry exists in kwargs
             if category_key not in kwargs or name_key not in kwargs:
+                print(f"Breaking at prompt {prompt_num}: {category_key} or {name_key} not found in kwargs")
                 break
                 
             # Get the values for this prompt entry
@@ -107,9 +138,12 @@ class PromptStack:
             prompt_name = kwargs.get(name_key, "")
             enabled = kwargs.get(enabled_key, True)
             
+            print(f"Processing prompt {prompt_num}: category={category}, name={prompt_name}, enabled={enabled}")
+            
             # If enabled and both category and name are provided, get the prompt text
             if enabled and category and prompt_name:
                 prompt_text = prompts_db.get(category, {}).get(prompt_name, "")
+                print(f"Found prompt text: {prompt_text[:50]}..." if len(prompt_text) > 50 else f"Found prompt text: {prompt_text}")
                 if prompt_text:
                     stacked_prompts.append(prompt_text)
             
@@ -117,4 +151,5 @@ class PromptStack:
         
         # Join all prompts with the separator
         result = separator.join(stacked_prompts)
+        print(f"Final stacked result: {result}")
         return (result,)
