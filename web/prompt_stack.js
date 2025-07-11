@@ -92,13 +92,14 @@ app.registerExtension({
 
                     if (firstCategoryWidget && firstPromptWidget) {
                         const categories = firstCategoryWidget.options.values;
-                        let selectedCategory = categories[0];
+                        // Use the currently selected category from the first widget, not the first category
+                        let selectedCategory = firstCategoryWidget.value || categories[0];
                         let prompts = [];
                         if (selectedCategory) {
                             prompts = await loadPrompts(selectedCategory);
                         }
-                        // Default to first prompt name if available
-                        let selectedPrompt = prompts.length > 0 ? prompts[0] : "";
+                        // Use the currently selected prompt from the first widget, not the first prompt
+                        let selectedPrompt = firstPromptWidget.value || (prompts.length > 0 ? prompts[0] : "");
 
                         // Add enabled checkbox
                         const enabledWidget = this.addWidget("toggle", selectedPrompt, true, null);
