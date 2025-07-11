@@ -344,12 +344,3 @@ async def create_new_prompt(request):
     except Exception as e:
         print(f"Error in create_new_prompt: {e}")
         return web.json_response({"success": False, "message": f"Error: {e}"}, status=500)
-
-
-NODE_CLASS_MAPPINGS = {
-    "PromptDB": PromptDB
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "PromptDB": "Prompt Database"
-}
