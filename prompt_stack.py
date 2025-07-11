@@ -1,17 +1,7 @@
 import os
 import json
 from .prompt_db import get_user_db_path, DEFAULT_PROMPTS
-
-
-def log(msg):
-    try:
-        home = os.environ.get('HOME') or os.environ.get('USERPROFILE') or os.path.expanduser('~')
-        log_file = os.path.join(home, 'pylog.txt')
-        with open(log_file, 'a', encoding='utf-8') as f:
-            f.write(msg + '\n')
-    except Exception as e:
-        # If logging fails, print to stdout as a fallback
-        print(f"Logging failed: {e}")
+from .pylog import log
 
 
 class PromptStack:

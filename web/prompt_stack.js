@@ -140,7 +140,47 @@ app.registerExtension({
                 
                 // Let ComfyUI handle widget serialization
                 this.serialize_widgets = true;
-                
+
+                // Override to serialize all prompt entries
+                this.onSerialize = function() {
+                    // Default serialization for separator
+                    const values = [];
+                    for (const widget of this.widgets) {
+                        // Only serialize widgets that are not remove buttons
+                        if (widget.type === 'button' && widget.label && widget.label.startsWith('❌ Remove Entry')) continue;
+                        if (widget.type === 'text' && widget.label && widget.label.startsWith('────────────────')) continue;
+                        if (widget.type === 'text' && widget.label && widget.label === 'Stacked Prompts:') continue;
+                        if (typeof widget.serializeValue === 'function') {
+                            values.push(widget.serializeValue(this, values.length));
+                        } else if (widget.value !== undefined) {
+                            values.push(widget.value);
+                        }
+                    }
+                    return values;
+                };
+
+                // Override to map widgets to backend parameter names
+                this.onGetInputs = function() {
+                    const inputs = {};
+                    let promptNum = 1;
+                    for (const widget of this.widgets) {
+                        if (widget.name === `prompt_${promptNum}_category`) {
+                            inputs[`prompt_${promptNum}_category`] = widget.value;
+                        } else if (widget.name === `prompt_${promptNum}_name`) {
+                            inputs[`prompt_${promptNum}_name`] = widget.value;
+                        } else if (widget.name === `prompt_${promptNum}_enabled`) {
+                            inputs[`prompt_${promptNum}_enabled`] = widget.value;
+                            promptNum++;
+                        }
+                    }
+                    // Also add separator
+                    const sepWidget = this.widgets.find(w => w.name === 'separator');
+                    if (sepWidget) {
+                        inputs['separator'] = sepWidget.value;
+                    }
+                    return inputs;
+                };
+
                 // Force the node to resize
                 this.computeSize();
                 this.setDirtyCanvas(true, true);
