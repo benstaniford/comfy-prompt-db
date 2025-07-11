@@ -8,6 +8,7 @@ class AnyType(str):
   def __ne__(self, __value: object) -> bool:
     return False
 
+# Nicked from ggthree's FlexibleOptionalInputType
 class FlexibleOptionalInputType(dict):
     def __init__(self, type, data: dict | None = None):
         self.type = type
