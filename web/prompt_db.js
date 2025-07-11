@@ -122,12 +122,25 @@ app.registerExtension({
                             originalCategoryCallback.call(this, value);
                         }
                         if (value) {
-                            loadPrompts(value);
-                            // Update the newCategoryWidget text field
-                            newCategoryWidget.value = value;
-                            if (newCategoryWidget.inputEl) {
-                                newCategoryWidget.inputEl.value = value;
-                            }
+                            loadPrompts(value).then(() => {
+                                // After prompts are loaded, update the text fields to match the dropdowns
+                                newCategoryWidget.value = value;
+                                if (newCategoryWidget.inputEl) {
+                                    newCategoryWidget.inputEl.value = value;
+                                }
+                                // Also update the prompt name text field to match the dropdown
+                                if (promptNameWidget.value) {
+                                    newPromptNameWidget.value = promptNameWidget.value;
+                                    if (newPromptNameWidget.inputEl) {
+                                        newPromptNameWidget.inputEl.value = promptNameWidget.value;
+                                    }
+                                } else {
+                                    newPromptNameWidget.value = "";
+                                    if (newPromptNameWidget.inputEl) {
+                                        newPromptNameWidget.inputEl.value = "";
+                                    }
+                                }
+                            });
                         }
                     };
                     
