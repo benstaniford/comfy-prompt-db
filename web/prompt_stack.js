@@ -102,13 +102,11 @@ app.registerExtension({
                         let selectedPrompt = firstPromptWidget.value || (prompts.length > 0 ? prompts[0] : "");
 
                         // Add enabled checkbox
-                        const enabledWidget = this.addWidget("toggle", selectedPrompt, true, null);
+                        const enabledWidget = this.addWidget("toggle", `prompt_${entryNum}_enabled`, true, null);
                         // Add category dropdown
-                        const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null);
-                        categoryWidget.options = { values: [...categories] };
+                        const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null, { values: [...categories] });
                         // Add prompt name dropdown
-                        const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null);
-                        promptWidget.options = { values: [...prompts] };
+                        const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null, { values: [...prompts] });
 
                         // Set up category change handler
                         setupCategoryHandler(entryNum);
