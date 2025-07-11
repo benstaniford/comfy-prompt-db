@@ -4,6 +4,25 @@ import folder_paths
 from aiohttp import web
 import server
 
+# DRY: Define default prompts once at module level
+DEFAULT_PROMPTS = {
+    "poses": {
+        "posing with camera": "a person posing with a camera, professional photography pose, confident stance",
+        "casual sitting": "person sitting casually, relaxed posture, natural lighting",
+        "standing portrait": "person standing in portrait pose, direct eye contact, professional setting"
+    },
+    "styles": {
+        "cinematic": "cinematic lighting, dramatic shadows, film grain, professional cinematography",
+        "artistic": "artistic composition, creative lighting, expressive style, fine art photography",
+        "minimalist": "clean composition, minimal background, simple elegant style"
+    },
+    "quality": {
+        "high quality": "masterpiece, best quality, ultra detailed, 8k resolution, professional photography",
+        "artistic quality": "artistic masterpiece, fine art, museum quality, exceptional detail",
+        "photorealistic": "photorealistic, hyperrealistic, lifelike, professional photo quality"
+    }
+}
+
 def get_comfy_path():
     """Get the ComfyUI root directory with fallback methods"""
     try:
@@ -61,27 +80,10 @@ class PromptDB:
     def ensure_prompts_file(self):
         """Create prompts.json file if it doesn't exist"""
         if not os.path.exists(self.prompts_file):
-            default_prompts = {
-                "poses": {
-                    "posing with camera": "a person posing with a camera, professional photography pose, confident stance",
-                    "casual sitting": "person sitting casually, relaxed posture, natural lighting",
-                    "standing portrait": "person standing in portrait pose, direct eye contact, professional setting"
-                },
-                "styles": {
-                    "cinematic": "cinematic lighting, dramatic shadows, film grain, professional cinematography",
-                    "artistic": "artistic composition, creative lighting, expressive style, fine art photography",
-                    "minimalist": "clean composition, minimal background, simple elegant style"
-                },
-                "quality": {
-                    "high quality": "masterpiece, best quality, ultra detailed, 8k resolution, professional photography",
-                    "artistic quality": "artistic masterpiece, fine art, museum quality, exceptional detail",
-                    "photorealistic": "photorealistic, hyperrealistic, lifelike, professional photo quality"
-                }
-            }
             try:
                 os.makedirs(os.path.dirname(self.prompts_file), exist_ok=True)
                 with open(self.prompts_file, 'w', encoding='utf-8') as f:
-                    json.dump(default_prompts, f, indent=2, ensure_ascii=False)
+                    json.dump(DEFAULT_PROMPTS, f, indent=2, ensure_ascii=False)
             except Exception as e:
                 print(f"Error creating prompts.json: {e}")
 
@@ -98,27 +100,10 @@ class PromptDB:
             
             # Create file if it doesn't exist
             if not os.path.exists(prompts_file):
-                default_prompts = {
-                    "poses": {
-                        "posing with camera": "a person posing with a camera, professional photography pose, confident stance",
-                        "casual sitting": "person sitting casually, relaxed posture, natural lighting",
-                        "standing portrait": "person standing in portrait pose, direct eye contact, professional setting"
-                    },
-                    "styles": {
-                        "cinematic": "cinematic lighting, dramatic shadows, film grain, professional cinematography",
-                        "artistic": "artistic composition, creative lighting, expressive style, fine art photography",
-                        "minimalist": "clean composition, minimal background, simple elegant style"
-                    },
-                    "quality": {
-                        "high quality": "masterpiece, best quality, ultra detailed, 8k resolution, professional photography",
-                        "artistic quality": "artistic masterpiece, fine art, museum quality, exceptional detail",
-                        "photorealistic": "photorealistic, hyperrealistic, lifelike, professional photo quality"
-                    }
-                }
                 try:
                     os.makedirs(os.path.dirname(prompts_file), exist_ok=True)
                     with open(prompts_file, 'w', encoding='utf-8') as f:
-                        json.dump(default_prompts, f, indent=2, ensure_ascii=False)
+                        json.dump(DEFAULT_PROMPTS, f, indent=2, ensure_ascii=False)
                 except Exception as e:
                     print(f"Error creating prompts.json: {e}")
             
