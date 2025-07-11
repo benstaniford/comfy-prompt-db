@@ -123,6 +123,11 @@ app.registerExtension({
                         }
                         if (value) {
                             loadPrompts(value);
+                            // Update the newCategoryWidget text field
+                            newCategoryWidget.value = value;
+                            if (newCategoryWidget.inputEl) {
+                                newCategoryWidget.inputEl.value = value;
+                            }
                         }
                     };
                     
@@ -133,6 +138,11 @@ app.registerExtension({
                         }
                         if (value && categoryWidget.value) {
                             loadPromptText(categoryWidget.value, value);
+                            // Update the newPromptNameWidget text field
+                            newPromptNameWidget.value = value;
+                            if (newPromptNameWidget.inputEl) {
+                                newPromptNameWidget.inputEl.value = value;
+                            }
                         }
                     };
                     
@@ -141,31 +151,83 @@ app.registerExtension({
                         const category = categoryWidget.value;
                         const promptName = promptNameWidget.value;
                         const promptText = promptTextWidget.value;
-                        
-                        if (!category || !promptName) {
+                        const newCategory = newCategoryWidget.value?.trim();
+                        const newPromptName = newPromptNameWidget.value?.trim();
+        
+                        // If the text fields differ from the dropdowns, treat as new prompt/category
+                        let finalCategory = category;
+                        let finalPromptName = promptName;
+                        let isNewCategory = false;
+                        let isNewPrompt = false;
+                        if (newCategory && newCategory !== category) {
+                            finalCategory = newCategory;
+                            isNewCategory = true;
+                        }
+                        if (newPromptName && newPromptName !== promptName) {
+                            finalPromptName = newPromptName;
+                            isNewPrompt = true;
+                        }
+                        if (!finalCategory || !finalPromptName) {
                             alert("Category and prompt name are required");
                             return;
                         }
-                        
                         try {
+                            if (isNewCategory || isNewPrompt) {
+                                // Create new prompt (and category if needed)
+                                const response = await api.fetchApi("/prompt_db_create", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        category: finalCategory,
+                                        prompt_name: finalPromptName
+                                    })
+                                });
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    if (!data.success) {
+                                        alert("Create failed: " + data.message);
+                                        return;
+                                    }
+                                } else {
+                                    alert("API call failed with status: " + response.status);
+                                    return;
+                                }
+                            }
+                            // Save or update prompt text
                             const response = await api.fetchApi("/prompt_db_save", {
                                 method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
+                                headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                    category: category,
-                                    prompt_name: promptName,
+                                    category: finalCategory,
+                                    prompt_name: finalPromptName,
                                     prompt_text: promptText
                                 })
                             });
-                            
                             if (response.ok) {
                                 const data = await response.json();
-                                if (data.success) {
-                                    // Success - could show a brief success message if needed
-                                } else {
+                                if (!data.success) {
                                     alert("Save failed: " + data.message);
+                                } else {
+                                    // Update dropdowns to reflect new values if needed
+                                    if (!categoryWidget.options.values.includes(finalCategory)) {
+                                        categoryWidget.options.values.push(finalCategory);
+                                        if (categoryWidget.inputEl) {
+                                            const option = document.createElement("option");
+                                            option.value = finalCategory;
+                                            option.textContent = finalCategory;
+                                            categoryWidget.inputEl.appendChild(option);
+                                        }
+                                    }
+                                    categoryWidget.value = finalCategory;
+                                    if (categoryWidget.inputEl) categoryWidget.inputEl.value = finalCategory;
+                                    await loadPrompts(finalCategory, false, finalPromptName);
+                                    promptNameWidget.value = finalPromptName;
+                                    if (promptNameWidget.inputEl) promptNameWidget.inputEl.value = finalPromptName;
+                                    // Overwrite text fields to match dropdowns
+                                    newCategoryWidget.value = finalCategory;
+                                    if (newCategoryWidget.inputEl) newCategoryWidget.inputEl.value = finalCategory;
+                                    newPromptNameWidget.value = finalPromptName;
+                                    if (newPromptNameWidget.inputEl) newPromptNameWidget.inputEl.value = finalPromptName;
                                 }
                             } else {
                                 alert("API call failed with status: " + response.status);
@@ -188,90 +250,6 @@ app.registerExtension({
                         newPromptNameWidget.inputEl.placeholder = "Enter prompt name...";
                         newPromptNameWidget.inputEl.title = "Enter a unique name for your new prompt";
                     }
-                    
-                    // Add New button
-                    const newButton = this.addWidget("button", "📝 Add Prompt", "", async () => {
-                        
-                        const category = newCategoryWidget.value?.trim();
-                        const promptName = newPromptNameWidget.value?.trim();
-                        
-                        if (!category) {
-                            alert("Please enter a category name (new or existing)");
-                            return;
-                        }
-                        
-                        if (!promptName) {
-                            alert("Please enter a prompt name");
-                            return;
-                        }
-                        
-                        try {
-                            const response = await api.fetchApi("/prompt_db_create", {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({
-                                    category: category,
-                                    prompt_name: promptName
-                                })
-                            });
-                            
-                            if (response.ok) {
-                                const data = await response.json();
-                                if (data.success) {
-                                    
-                                    // Update category dropdown if it's a new category
-                                    const currentCategories = categoryWidget.options.values;
-                                    if (!currentCategories.includes(category)) {
-                                        categoryWidget.options.values.push(category);
-                                        if (categoryWidget.inputEl) {
-                                            const option = document.createElement("option");
-                                            option.value = category;
-                                            option.textContent = category;
-                                            categoryWidget.inputEl.appendChild(option);
-                                        }
-                                    }
-                                    
-                                    // Select the new category and load its prompts
-                                    categoryWidget.value = category;
-                                    if (categoryWidget.inputEl) {
-                                        categoryWidget.inputEl.value = category;
-                                    }
-                                    
-                                    await loadPrompts(category);
-                                    
-                                    // Select the new prompt
-                                    promptNameWidget.value = promptName;
-                                    if (promptNameWidget.inputEl) {
-                                        promptNameWidget.inputEl.value = promptName;
-                                    }
-                                    
-                                    // Clear text area for new prompt
-                                    promptTextWidget.value = "";
-                                    if (promptTextWidget.callback) {
-                                        promptTextWidget.callback("");
-                                    }
-                                    
-                                    // Clear the input fields
-                                    newCategoryWidget.value = "";
-                                    newPromptNameWidget.value = "";
-                                    if (newCategoryWidget.inputEl) {
-                                        newCategoryWidget.inputEl.value = "";
-                                    }
-                                    if (newPromptNameWidget.inputEl) {
-                                        newPromptNameWidget.inputEl.value = "";
-                                    }
-                                } else {
-                                    alert("Create failed: " + data.message);
-                                }
-                            } else {
-                                alert("API call failed with status: " + response.status);
-                            }
-                        } catch (error) {
-                            alert("Error creating prompt: " + error.message);
-                        }
-                    });
                     
                     // Initialize with current category
                     if (categoryWidget.value) {
@@ -306,6 +284,13 @@ app.registerExtension({
                             if (categoryWidget && categoryWidget.value) {
                                 // Load prompts for this category, and try to restore the prompt_name
                                 loadPrompts(categoryWidget.value, true, restoredPromptName);
+                                // Also update the text fields
+                                newCategoryWidget.value = categoryWidget.value;
+                                if (newCategoryWidget.inputEl) newCategoryWidget.inputEl.value = categoryWidget.value;
+                                if (restoredPromptName) {
+                                    newPromptNameWidget.value = restoredPromptName;
+                                    if (newPromptNameWidget.inputEl) newPromptNameWidget.inputEl.value = restoredPromptName;
+                                }
                             }
                         }, 200);
                     };
