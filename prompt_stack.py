@@ -3,6 +3,30 @@ import json
 from .prompt_db import get_user_db_path, DEFAULT_PROMPTS
 from .pylog import log
 
+class AnyType(str):
+  """A special class that is always equal in not equal comparisons. Credit to pythongosssss"""
+
+  def __ne__(self, __value: object) -> bool:
+    return False
+
+class FlexibleOptionalInputType(dict):
+    def __init__(self, type, data: dict | None = None):
+        self.type = type
+        self.data = data
+        if self.data is not None:
+            for k, v in self.data.items():
+                self[k] = v
+
+    def __getitem__(self, key):
+        if self.data is not None and key in self.data:
+            val = self.data[key]
+            return val
+        return (self.type, )
+
+    def __contains__(self, key):
+        return True
+
+any_type = AnyType("*")
 
 class PromptStack:
     """A node that allows stacking multiple prompts from the database into a single output"""
@@ -71,6 +95,11 @@ class PromptStack:
                 "prompt_1_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
                 "prompt_1_enabled": ("BOOLEAN", {"default": True}),
             },
+            #"optional": FlexibleOptionalInputType(any_type, {
+            #    "prompt_category": (categories, {"default": categories[0]}),
+            #    "prompt_name": (prompt_names, {"default": prompt_names[0] if prompt_names else ""}),
+            #    "prompt_enabled": ("BOOLEAN", {"default": True}),
+            #}),
             "hidden": {},
         }
     
