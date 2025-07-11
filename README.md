@@ -9,7 +9,7 @@ A ComfyUI custom node that provides a database-driven prompt management system. 
 - **Editable Prompts**: Edit prompt text directly in the node interface
 - **Persistent Storage**: All prompts stored in `user/default/user-db/prompts.json` in your ComfyUI directory
 - **Save/Load Functionality**: Save changes back to the database instantly
-- **Create New Prompts**: Add new categories and prompts on the fly
+- **Create or Update Prompts**: Add new categories and prompts, or update existing ones, all with the Save button
 - **No Inputs Required**: Standalone text generation node
 
 ## Installation
@@ -17,14 +17,14 @@ A ComfyUI custom node that provides a database-driven prompt management system. 
 ### Method 1: ComfyUI Manager (Recommended)
 1. Install via ComfyUI Manager using this Git URL:
    ```
-   https://github.com/yourusername/comfy-prompt-db
+   https://github.com/benstaniford/comfy-prompt-db.git
    ```
 
 ### Method 2: Manual Installation
 1. Clone into your ComfyUI custom_nodes folder:
    ```bash
    cd ComfyUI/custom_nodes
-   git clone https://github.com/yourusername/comfy-prompt-db.git
+   git clone https://github.com/benstaniford/comfy-prompt-db.git
    ```
 2. Restart ComfyUI
 
@@ -35,9 +35,15 @@ A ComfyUI custom node that provides a database-driven prompt management system. 
 3. Select a prompt name from the second dropdown menu
 4. The prompt text will automatically load in the text area
 5. Edit the prompt text if desired
-6. Click "💾 Save" to save changes back to the database
-7. Click "📝 New" to create a new category/prompt combination
+6. To add a new category or prompt, simply type a new category or prompt name in the text fields below the dropdowns
+7. Click "💾 Save" to create a new category or prompt, or to update an existing one
 8. Connect the output to other nodes that accept text input
+
+### How to Add or Update Prompts and Categories
+- **To add a new category:** Enter a new category name in the "Add/Update Category" text field, enter a prompt name, and click "💾 Save". The new category and prompt will be created.
+- **To add a new prompt to an existing category:** Select the category from the dropdown, enter a new prompt name in the "Add/Update Prompt Name" text field, and click "💾 Save".
+- **To update an existing prompt:** Select the category and prompt from the dropdowns, edit the prompt text, and click "💾 Save".
+- The text fields below the dropdowns always reflect the current selection, but you can overwrite them to create new entries.
 
 ## Node Details
 
@@ -80,11 +86,7 @@ The node comes with sample categories and prompts:
 
 ## Creating New Content
 
-Use the "📝 New" button to create new categories and prompts. The system will:
-1. Prompt you for a category name
-2. Prompt you for a prompt name
-3. Create the new entry in the database
-4. Automatically select the new entry for editing
+To create new categories or prompts, simply type a new category or prompt name in the text fields and click "💾 Save". The system will automatically create or update the entry in the database and select it for editing.
 
 ## License
 
