@@ -162,16 +162,15 @@ app.registerExtension({
                         originalOnConfigure.apply(this, arguments);
                     }
 
-                    // Parse prompt entries from widgets_values
+                    // Parse prompt entries from widgets_values (category, name, [skip text], enabled)
                     const values = info?.widgets_values || [];
                     console.log('[PromptStack] widgets_values:', values);
                     let promptEntries = [];
-                    // The first value is always separator, then every 3 values is a prompt entry
-                    for (let i = 1; i + 2 < values.length; i += 3) {
+                    for (let i = 1; i + 3 < values.length; i += 4) {
                         promptEntries.push({
-                            enabled: values[i],
-                            category: values[i + 1],
-                            name: values[i + 2]
+                            category: values[i],
+                            name: values[i + 1],
+                            enabled: values[i + 2]
                         });
                     }
                     console.log('[PromptStack] Parsed promptEntries:', promptEntries);
@@ -184,7 +183,7 @@ app.registerExtension({
                     // Log all widgets after restore
                     console.log('[PromptStack] Widgets after restore:', this.widgets.map(w => w.name || w.label || w.type));
 
-                    // Final pass to ensure all dropdowns are correctly populated
+                    //Final pass to ensure all dropdowns are correctly populated
                     setTimeout(async () => {
                         const categoryWidgets = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_category"));
                         for (const widget of categoryWidgets) {
