@@ -168,9 +168,9 @@ app.registerExtension({
                     let promptEntries = [];
                     for (let i = 1; i + 3 < values.length; i += 4) {
                         promptEntries.push({
-                            category: values[i],
-                            name: values[i + 1],
-                            enabled: values[i + 2]
+                            enabled: values[i + 1],
+                            category: values[i + 2],
+                            name: values[i + 3]
                         });
                     }
                     console.log('[PromptStack] Parsed promptEntries:', promptEntries);
