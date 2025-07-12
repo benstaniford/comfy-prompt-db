@@ -136,7 +136,7 @@ The node comes with sample categories and prompts:
 
 ## Creating New Content
 
-To create new categories or prompts, simply type a new category or prompt name in the text fields and click "💾 Save". The system will automatically create or update the entry in the database and select it for editing.
+To create new categories or prompts, simply type a new category or prompt name in the text fields and click "💾 Save". The system will automatically create or update the entry in the database and select it for editing.  Alternately, you can edit the raw json file.  Most LLMs are excellent at adding whole sections of JSON to this file given a good prompt.
 
 ## License
 
