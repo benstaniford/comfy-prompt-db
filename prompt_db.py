@@ -177,6 +177,32 @@ class PromptDB:
         return (prompt_text,)
 
 
+# API endpoint for loading categories
+@server.PromptServer.instance.routes.post("/prompt_db_categories")
+async def load_categories(request):
+    try:
+        # Get the user database directory
+        user_db_path = get_user_db_path()
+        prompts_file = os.path.join(user_db_path, "prompts.json")
+        
+        # Load prompts database
+        prompts_db = {}
+        if os.path.exists(prompts_file):
+            try:
+                with open(prompts_file, 'r', encoding='utf-8') as f:
+                    prompts_db = json.load(f)
+            except (json.JSONDecodeError, Exception) as e:
+                print(f"Error loading prompts.json: {e}")
+        
+        categories = list(prompts_db.keys()) if prompts_db else []
+        
+        return web.json_response({"categories": categories})
+        
+    except Exception as e:
+        print(f"Error in load_categories: {e}")
+        return web.json_response({"categories": []}, status=500)
+
+
 # API endpoint for loading prompts in a category
 @server.PromptServer.instance.routes.post("/prompt_db_prompts")
 async def load_prompts(request):

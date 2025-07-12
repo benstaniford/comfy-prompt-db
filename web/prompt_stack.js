@@ -13,6 +13,27 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function() {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 
+                // Function to load categories
+                const loadCategories = async () => {
+                    try {
+                        const response = await api.fetchApi("/prompt_db_categories", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({})
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data.categories || [];
+                        }
+                    } catch (error) {
+                        console.error("Error loading categories:", error);
+                    }
+                    return [];
+                };
+
                 // Function to load prompts for a category
                 const loadPrompts = async (category) => {
                     try {
@@ -36,6 +57,33 @@ app.registerExtension({
                     return [];
                 };
                 
+                // Function to update category dropdown
+                const updateCategoryDropdown = async (categoryWidget, restoredCategoryName = null) => {
+                    const categories = await loadCategories();
+                    categoryWidget.options.values = categories;
+
+                    // If a specific category was restored, ensure it's set, otherwise pick the first
+                    if (restoredCategoryName && categories.includes(restoredCategoryName)) {
+                        categoryWidget.value = restoredCategoryName;
+                    } else {
+                        categoryWidget.value = categories.length > 0 ? categories[0] : "";
+                    }
+                    
+                    // Update the DOM element if it exists
+                    if (categoryWidget.inputEl) {
+                        categoryWidget.inputEl.innerHTML = "";
+                        categories.forEach(category => {
+                            const option = document.createElement("option");
+                            option.value = category;
+                            option.textContent = category;
+                            if (category === categoryWidget.value) {
+                                option.selected = true;
+                            }
+                            categoryWidget.inputEl.appendChild(option);
+                        });
+                    }
+                };
+
                 // Function to update prompt dropdown when category changes
                 const updatePromptDropdown = async (categoryWidget, promptWidget, restoredPromptName = null) => {
                     if (categoryWidget.value) {
@@ -95,9 +143,9 @@ app.registerExtension({
                         entryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
                     }
 
-                    const firstCategoryWidget = this.widgets.find(w => w.name === "prompt_1_category");
-                    const categories = firstCategoryWidget ? firstCategoryWidget.options.values : [];
-                    let selectedCategory = init.category || (firstCategoryWidget ? firstCategoryWidget.value : categories[0]);
+                    // Load categories from API instead of copying from first widget
+                    const categories = await loadCategories();
+                    let selectedCategory = init.category || (categories.length > 0 ? categories[0] : "");
                     
                     let prompts = [];
                     if (selectedCategory) {
@@ -190,7 +238,10 @@ app.registerExtension({
                             const entryNum = widget.name.split('_')[1];
                             const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
                             if (promptWidget) {
-                                console.log(`[PromptStack] Updating dropdown for entry #${entryNum}:`, widget.value, promptWidget.value);
+                                console.log(`[PromptStack] Updating dropdowns for entry #${entryNum}:`, widget.value, promptWidget.value);
+                                // Update category dropdown first
+                                await updateCategoryDropdown(widget, widget.value);
+                                // Then update prompt dropdown
                                 await updatePromptDropdown(widget, promptWidget, promptWidget.value);
                             }
                         }
