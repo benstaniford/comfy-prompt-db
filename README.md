@@ -105,7 +105,7 @@ See the [Database Structure](#database-structure) section for details on how pro
 
 ## Database Structure
 
-Prompts are stored in `prompts.json` in your ComfyUI root directory:
+Prompts are stored in `user/default/user-db/prompts.json` in your ComfyUI directory:
 
 ```json
 {
