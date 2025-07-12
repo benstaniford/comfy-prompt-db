@@ -52,16 +52,46 @@ A ComfyUI custom node package that provides database-driven prompt management. S
 
 ### Prompt Stack Node
 
-1. Add the "Prompt Stack" node from the "text" category
+The **Prompt Stack** node allows you to combine multiple prompts from different categories into a single output string. This is useful for building complex prompt chains or modular prompt templates.
+
+#### Features
+- **Multiple Prompt Entries**: Add as many prompt entries as you need, each with its own category and prompt selection.
+- **Dynamic Dropdowns**: Category and prompt dropdowns are dynamically populated from your prompt database. If you add new categories or prompts, they will appear automatically.
+- **Enable/Disable Entries**: Each prompt entry can be enabled or disabled individually.
+- **Custom Separator**: Choose how prompts are joined (default is `, `).
+- **Easy Add/Remove**: Use the ➕ button to add new entries and ❌ to remove them.
+- **Automatic Restoration**: When loading a saved workflow, all prompt entries and their selections are restored, and dropdowns are updated to reflect the current database.
+
+#### How to Use
+1. Add the **Prompt Stack** node from the "text" category in ComfyUI.
 2. For each prompt entry:
-   - Toggle the enabled checkbox to include/exclude the prompt
-   - Select a category from the dropdown
-   - Select a prompt name from the dropdown (updates automatically when category changes)
-3. Use the "➕ Add Prompt Entry" button to add more prompts to the stack
-4. Use the "❌ Remove Entry X" button to remove individual entries (except the first one)
-5. Set the separator string (default is ", ") to control how prompts are joined
-6. The output will be all enabled prompts concatenated with the separator
-7. Connect the output to other nodes that accept text input
+   - Toggle the enabled checkbox to include/exclude the prompt.
+   - Select a category from the dropdown (populated from your database).
+   - Select a prompt name from the dropdown (updates automatically when category changes).
+3. Use the **➕ Add Prompt Entry** button to add more prompts to the stack.
+4. Use the **❌ Remove Entry X** button to remove individual entries (except the first one).
+5. Set the separator string (default is `, `) to control how prompts are joined.
+6. The output will be all enabled prompts concatenated with the separator.
+7. Connect the output to other nodes that accept text input.
+
+#### Example Output
+If you have three enabled prompt entries with prompts:
+- "masterpiece, best quality"
+- "cinematic lighting, dramatic shadows"
+- "person standing in portrait pose"
+
+And your separator is `, `, the output will be:
+
+```
+masterpiece, best quality, cinematic lighting, dramatic shadows, person standing in portrait pose
+```
+
+#### Technical Details
+- **Dropdowns**: Both category and prompt dropdowns are kept in sync with the database. When the node is loaded or categories/prompts change, dropdowns update automatically.
+- **Persistence**: All prompt selections and enabled states are saved with the workflow and restored on load.
+- **No Inputs Required**: The node is standalone and does not require any input connections.
+
+See the [Database Structure](#database-structure) section for details on how prompts are stored.
 
 ## Node Details
 
