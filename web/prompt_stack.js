@@ -142,37 +142,47 @@ app.registerExtension({
                 // Override onConfigure to handle widget restoration after loading
                 const originalOnConfigure = this.onConfigure;
                 this.onConfigure = async function(info) {
-                    // Let ComfyUI handle the initial restoration of widget values
+                    console.log('[PromptStack] onConfigure called', info);
+                    // Remove all prompt widgets except separator and add button
+                    const widgetsToRemove = this.widgets.filter(w => w.name && w.name.startsWith('prompt_'));
+                    console.log('[PromptStack] Removing prompt widgets:', widgetsToRemove.map(w => w.name));
+                    widgetsToRemove.forEach(widget => {
+                        this.widgets.splice(this.widgets.indexOf(widget), 1);
+                    });
+                    // Remove all remove buttons
+                    const removeButtons = this.widgets.filter(w => w.type === 'button' && w.label && w.label.startsWith('❌ Remove Entry'));
+                    console.log('[PromptStack] Removing remove buttons:', removeButtons.map(w => w.label));
+                    removeButtons.forEach(widget => {
+                        this.widgets.splice(this.widgets.indexOf(widget), 1);
+                    });
+
+                    // Let ComfyUI restore static widgets (like separator)
                     if (originalOnConfigure) {
+                        console.log('[PromptStack] Calling originalOnConfigure');
                         originalOnConfigure.apply(this, arguments);
                     }
 
+                    // Parse prompt entries from widgets_values
                     const values = info?.widgets_values || [];
-                    const promptEntryCount = Math.floor((values.length - 1) / 3);
-
-                    // Clean up any extra widgets that might have been added by default
-                    while (this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length > promptEntryCount) {
-                        const lastEntryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length;
-                        const widgetsToRemove = this.widgets.filter(w =>
-                             (w.name && (w.name.startsWith(`prompt_${lastEntryNum}_`) || w.name === `❌ Remove Entry ${lastEntryNum}`))
-                        );
-                         widgetsToRemove.forEach(widget => {
-                            this.widgets.splice(this.widgets.indexOf(widget), 1);
+                    console.log('[PromptStack] widgets_values:', values);
+                    let promptEntries = [];
+                    // The first value is always separator, then every 3 values is a prompt entry
+                    for (let i = 1; i + 2 < values.length; i += 3) {
+                        promptEntries.push({
+                            enabled: values[i],
+                            category: values[i + 1],
+                            name: values[i + 2]
                         });
                     }
-
-                    // Add any missing prompt entries sequentially
-                    const currentEntries = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length;
-                    for (let i = currentEntries; i < promptEntryCount; i++) {
-                        const entryNum = i + 1;
-                        const idx = 1 + i * 3;
-                        const initData = {
-                            enabled: values[idx],
-                            category: values[idx + 1],
-                            name: values[idx + 2]
-                        };
-                        await addPromptEntry.call(this, initData, entryNum);
+                    console.log('[PromptStack] Parsed promptEntries:', promptEntries);
+                    // Add prompt widgets for each entry
+                    for (let i = 0; i < promptEntries.length; i++) {
+                        console.log(`[PromptStack] Adding prompt entry #${i+1}:`, promptEntries[i]);
+                        await addPromptEntry.call(this, promptEntries[i], i + 1);
                     }
+
+                    // Log all widgets after restore
+                    console.log('[PromptStack] Widgets after restore:', this.widgets.map(w => w.name || w.label || w.type));
 
                     // Final pass to ensure all dropdowns are correctly populated
                     setTimeout(async () => {
@@ -181,6 +191,7 @@ app.registerExtension({
                             const entryNum = widget.name.split('_')[1];
                             const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
                             if (promptWidget) {
+                                console.log(`[PromptStack] Updating dropdown for entry #${entryNum}:`, widget.value, promptWidget.value);
                                 await updatePromptDropdown(widget, promptWidget, promptWidget.value);
                             }
                         }
