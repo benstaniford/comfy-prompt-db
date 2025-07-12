@@ -51,10 +51,8 @@ app.registerExtension({
                 
                 // Function to update prompt dropdown when category changes
                 const updatePromptDropdown = async (categoryWidget, promptWidget) => {
-                    await log(`[JS] updatePromptDropdown called for category: ${categoryWidget.value}`);
                     if (categoryWidget.value) {
                         const prompts = await loadPrompts(categoryWidget.value);
-                        await log(`[JS] Prompts loaded: ${JSON.stringify(prompts)}`);
                         promptWidget.options.values = prompts;
                         promptWidget.value = prompts.length > 0 ? prompts[0] : "";
                         
@@ -98,7 +96,6 @@ app.registerExtension({
                 
                 // Function to add a new prompt entry
                 const addPromptEntry = async () => {
-                    await log(`[JS] addPromptEntry called`);
                     // Count current prompt entries by enabled toggles
                     const entryNum = this.widgets.filter(w => w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
 
