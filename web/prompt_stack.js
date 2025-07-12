@@ -36,19 +36,6 @@ app.registerExtension({
                     return [];
                 };
                 
-                // Helper to log to the Python pylog endpoint
-                const log = async (msg) => {
-                    try {
-                        await fetch("/pylog", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ msg })
-                        });
-                    } catch (e) {
-                        console.warn("Failed to log to /pylog:", e);
-                    }
-                };
-                
                 // Function to update prompt dropdown when category changes
                 const updatePromptDropdown = async (categoryWidget, promptWidget, restoredPromptName = null) => {
                     if (categoryWidget.value) {
