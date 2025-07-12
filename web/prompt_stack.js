@@ -50,11 +50,17 @@ app.registerExtension({
                 };
                 
                 // Function to update prompt dropdown when category changes
-                const updatePromptDropdown = async (categoryWidget, promptWidget) => {
+                const updatePromptDropdown = async (categoryWidget, promptWidget, restoredPromptName = null) => {
                     if (categoryWidget.value) {
                         const prompts = await loadPrompts(categoryWidget.value);
                         promptWidget.options.values = prompts;
-                        promptWidget.value = prompts.length > 0 ? prompts[0] : "";
+
+                        // If a specific prompt was restored, ensure it's set, otherwise pick the first
+                        if (restoredPromptName && prompts.includes(restoredPromptName)) {
+                            promptWidget.value = restoredPromptName;
+                        } else {
+                            promptWidget.value = prompts.length > 0 ? prompts[0] : "";
+                        }
                         
                         // Update the DOM element if it exists
                         if (promptWidget.inputEl) {
@@ -63,9 +69,11 @@ app.registerExtension({
                                 const option = document.createElement("option");
                                 option.value = prompt;
                                 option.textContent = prompt;
+                                if (prompt === promptWidget.value) {
+                                    option.selected = true;
+                                }
                                 promptWidget.inputEl.appendChild(option);
                             });
-                            promptWidget.inputEl.value = promptWidget.value;
                         }
                     }
                 };
@@ -94,102 +102,99 @@ app.registerExtension({
                 // Set up the first entry
                 setupCategoryHandler(1);
                 
-                // Function to add a new prompt entry (now supports initial values for restore)
-                const addPromptEntry = async (init = {}) => {
-                    const entryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
+                // Function to add a new prompt entry (now supports initial values and entry number for restore)
+                const addPromptEntry = async (init = {}, entryNum = -1) => {
+                    if (entryNum === -1) {
+                        entryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
+                    }
+
                     const firstCategoryWidget = this.widgets.find(w => w.name === "prompt_1_category");
                     const categories = firstCategoryWidget ? firstCategoryWidget.options.values : [];
                     let selectedCategory = init.category || (firstCategoryWidget ? firstCategoryWidget.value : categories[0]);
+                    
                     let prompts = [];
                     if (selectedCategory) {
                         prompts = await loadPrompts(selectedCategory);
                     }
+                    
                     let selectedPrompt = init.name || (prompts.length > 0 ? prompts[0] : "");
+                    
                     const enabledWidget = this.addWidget("toggle", `prompt_${entryNum}_enabled`, init.enabled !== undefined ? init.enabled : true, null);
                     const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null, { values: [...categories] });
                     const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null, { values: [...prompts] });
+                    
                     setupCategoryHandler(entryNum);
-                    const removeButton = this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
+                    
+                    this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
                         const widgetsToRemove = this.widgets.filter(w =>
-                            w.name === `prompt_${entryNum}_enabled` ||
-                            w.name === `prompt_${entryNum}_category` ||
-                            w.name === `prompt_${entryNum}_name` ||
-                            w.name === `❌ Remove Entry ${entryNum}`
+                            (w.name && (w.name.startsWith(`prompt_${entryNum}_`) || w.name === `❌ Remove Entry ${entryNum}`))
                         );
                         widgetsToRemove.forEach(widget => {
-                            const index = this.widgets.indexOf(widget);
-                            if (index > -1) {
-                                this.widgets.splice(index, 1);
-                            }
+                            this.widgets.splice(this.widgets.indexOf(widget), 1);
                         });
                         this.computeSize();
                         this.setDirtyCanvas(true, true);
                     });
-                    updatePromptDropdown(categoryWidget, promptWidget);
+
+                    // Manually set the value for the restored prompt name, as the initial list might not contain it
+                    if (init.name) {
+                        promptWidget.value = init.name;
+                    }
+
+                    updatePromptDropdown(categoryWidget, promptWidget, init.name);
                     this.computeSize();
                     this.setDirtyCanvas(true, true);
                 };
                 
                 // Add the "Add Prompt" button
-                const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry(); });
+                const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
                 
                 // Let ComfyUI handle widget serialization
                 this.serialize_widgets = true;
 
                 // Override onConfigure to handle widget restoration after loading
                 const originalOnConfigure = this.onConfigure;
-                this.onConfigure = function(info) {
+                this.onConfigure = async function(info) {
+                    // Let ComfyUI handle the initial restoration of widget values
+                    if (originalOnConfigure) {
+                        originalOnConfigure.apply(this, arguments);
+                    }
+
                     const values = info?.widgets_values || [];
                     const promptEntryCount = Math.floor((values.length - 1) / 3);
-                    // Remove all but the first prompt entry (if any)
-                    while (this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length > 1) {
-                        const entryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length;
+
+                    // Clean up any extra widgets that might have been added by default
+                    while (this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length > promptEntryCount) {
+                        const lastEntryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length;
                         const widgetsToRemove = this.widgets.filter(w =>
-                            w.name === `prompt_${entryNum}_enabled` ||
-                            w.name === `prompt_${entryNum}_category` ||
-                            w.name === `prompt_${entryNum}_name` ||
-                            w.name === `❌ Remove Entry ${entryNum}`
+                             (w.name && (w.name.startsWith(`prompt_${lastEntryNum}_`) || w.name === `❌ Remove Entry ${lastEntryNum}`))
                         );
-                        widgetsToRemove.forEach(widget => {
-                            const index = this.widgets.indexOf(widget);
-                            if (index > -1) {
-                                this.widgets.splice(index, 1);
-                            }
+                         widgetsToRemove.forEach(widget => {
+                            this.widgets.splice(this.widgets.indexOf(widget), 1);
                         });
                     }
-                    // Add prompt entries with correct values (skip the first, which already exists)
-                    for (let i = 1; i < promptEntryCount; i++) {
+
+                    // Add any missing prompt entries sequentially
+                    const currentEntries = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length;
+                    for (let i = currentEntries; i < promptEntryCount; i++) {
+                        const entryNum = i + 1;
                         const idx = 1 + i * 3;
-                        addPromptEntry.call(this, {
+                        const initData = {
                             enabled: values[idx],
                             category: values[idx + 1],
                             name: values[idx + 2]
-                        });
+                        };
+                        await addPromptEntry.call(this, initData, entryNum);
                     }
-                    if (originalOnConfigure) {
-                        originalOnConfigure.call(this, info);
-                    }
+
+                    // Final pass to ensure all dropdowns are correctly populated
                     setTimeout(async () => {
                         const categoryWidgets = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_category"));
-                        for (const categoryWidget of categoryWidgets) {
-                            const entryNum = categoryWidget.name.split('_')[1];
+                        for (const widget of categoryWidgets) {
+                            const entryNum = widget.name.split('_')[1];
                             const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
-                            if (promptWidget && categoryWidget.value) {
-                                const prompts = await loadPrompts(categoryWidget.value);
-                                promptWidget.options.values = prompts;
-                                if (!prompts.includes(promptWidget.value)) {
-                                    promptWidget.value = prompts.length > 0 ? prompts[0] : "";
-                                }
-                                if (promptWidget.inputEl) {
-                                    promptWidget.inputEl.innerHTML = "";
-                                    prompts.forEach(prompt => {
-                                        const option = document.createElement("option");
-                                        option.value = prompt;
-                                        option.textContent = prompt;
-                                        promptWidget.inputEl.appendChild(option);
-                                    });
-                                    promptWidget.inputEl.value = promptWidget.value;
-                                }
+                            if (promptWidget) {
+                                await updatePromptDropdown(widget, promptWidget, promptWidget.value);
                             }
                         }
                     }, 200);
