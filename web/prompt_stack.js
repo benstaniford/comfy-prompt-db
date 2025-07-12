@@ -154,6 +154,43 @@ app.registerExtension({
                 // Let ComfyUI handle widget serialization
                 this.serialize_widgets = true;
 
+                // Override onConfigure to handle widget restoration after loading
+                const originalOnConfigure = this.onConfigure;
+                this.onConfigure = function(info) {
+                    // Let ComfyUI restore the widget values first
+                    if (originalOnConfigure) {
+                        originalOnConfigure.call(this, info);
+                    }
+                    // After widgets are restored, update all prompt dropdowns to match restored categories
+                    setTimeout(async () => {
+                        // For each prompt_N_category, update its prompt_N_name dropdown
+                        const categoryWidgets = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_category"));
+                        for (const categoryWidget of categoryWidgets) {
+                            const entryNum = categoryWidget.name.split('_')[1];
+                            const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
+                            if (promptWidget && categoryWidget.value) {
+                                const prompts = await loadPrompts(categoryWidget.value);
+                                promptWidget.options.values = prompts;
+                                // If the restored value is not in the new list, pick the first
+                                if (!prompts.includes(promptWidget.value)) {
+                                    promptWidget.value = prompts.length > 0 ? prompts[0] : "";
+                                }
+                                // Update the DOM element if it exists
+                                if (promptWidget.inputEl) {
+                                    promptWidget.inputEl.innerHTML = "";
+                                    prompts.forEach(prompt => {
+                                        const option = document.createElement("option");
+                                        option.value = prompt;
+                                        option.textContent = prompt;
+                                        promptWidget.inputEl.appendChild(option);
+                                    });
+                                    promptWidget.inputEl.value = promptWidget.value;
+                                }
+                            }
+                        }
+                    }, 200);
+                };
+
                 // Override to serialize all prompt entries
                 this.onSerialize = function() {
                     // Default serialization for separator
