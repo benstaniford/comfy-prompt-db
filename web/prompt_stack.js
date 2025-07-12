@@ -94,56 +94,38 @@ app.registerExtension({
                 // Set up the first entry
                 setupCategoryHandler(1);
                 
-                // Function to add a new prompt entry
-                const addPromptEntry = async () => {
-                    // Count current prompt entries by enabled toggles
-                    const entryNum = this.widgets.filter(w => w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
-
-                    // Get categories and prompts from the first entry
+                // Function to add a new prompt entry (now supports initial values for restore)
+                const addPromptEntry = async (init = {}) => {
+                    const entryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length + 1;
                     const firstCategoryWidget = this.widgets.find(w => w.name === "prompt_1_category");
-                    const firstPromptWidget = this.widgets.find(w => w.name === "prompt_1_name");
-
-                    if (firstCategoryWidget && firstPromptWidget) {
-                        const categories = firstCategoryWidget.options.values;
-                        // Use the currently selected category from the first widget, not the first category
-                        let selectedCategory = firstCategoryWidget.value || categories[0];
-                        let prompts = [];
-                        if (selectedCategory) {
-                            prompts = await loadPrompts(selectedCategory);
-                        }
-                        // Use the currently selected prompt from the first widget, not the first prompt
-                        let selectedPrompt = firstPromptWidget.value || (prompts.length > 0 ? prompts[0] : "");
-
-                        // Add enabled checkbox
-                        const enabledWidget = this.addWidget("toggle", `prompt_${entryNum}_enabled`, true, null);
-                        // Add category dropdown
-                        const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null, { values: [...categories] });
-                        // Add prompt name dropdown
-                        const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null, { values: [...prompts] });
-
-                        // Set up category change handler
-                        setupCategoryHandler(entryNum);
-
-                        // Add remove button for this entry
-                        const removeButton = this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
-                            const widgetsToRemove = this.widgets.filter(w =>
-                                w.name === `prompt_${entryNum}_enabled` ||
-                                w.name === `prompt_${entryNum}_category` ||
-                                w.name === `prompt_${entryNum}_name` ||
-                                w.name === `❌ Remove Entry ${entryNum}`
-                            );
-                            widgetsToRemove.forEach(widget => {
-                                const index = this.widgets.indexOf(widget);
-                                if (index > -1) {
-                                    this.widgets.splice(index, 1);
-                                }
-                            });
-                            this.computeSize();
-                            this.setDirtyCanvas(true, true);
-                        });
-                        // Load initial prompts for the new category
-                        updatePromptDropdown(categoryWidget, promptWidget);
+                    const categories = firstCategoryWidget ? firstCategoryWidget.options.values : [];
+                    let selectedCategory = init.category || (firstCategoryWidget ? firstCategoryWidget.value : categories[0]);
+                    let prompts = [];
+                    if (selectedCategory) {
+                        prompts = await loadPrompts(selectedCategory);
                     }
+                    let selectedPrompt = init.name || (prompts.length > 0 ? prompts[0] : "");
+                    const enabledWidget = this.addWidget("toggle", `prompt_${entryNum}_enabled`, init.enabled !== undefined ? init.enabled : true, null);
+                    const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null, { values: [...categories] });
+                    const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null, { values: [...prompts] });
+                    setupCategoryHandler(entryNum);
+                    const removeButton = this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
+                        const widgetsToRemove = this.widgets.filter(w =>
+                            w.name === `prompt_${entryNum}_enabled` ||
+                            w.name === `prompt_${entryNum}_category` ||
+                            w.name === `prompt_${entryNum}_name` ||
+                            w.name === `❌ Remove Entry ${entryNum}`
+                        );
+                        widgetsToRemove.forEach(widget => {
+                            const index = this.widgets.indexOf(widget);
+                            if (index > -1) {
+                                this.widgets.splice(index, 1);
+                            }
+                        });
+                        this.computeSize();
+                        this.setDirtyCanvas(true, true);
+                    });
+                    updatePromptDropdown(categoryWidget, promptWidget);
                     this.computeSize();
                     this.setDirtyCanvas(true, true);
                 };
@@ -157,13 +139,37 @@ app.registerExtension({
                 // Override onConfigure to handle widget restoration after loading
                 const originalOnConfigure = this.onConfigure;
                 this.onConfigure = function(info) {
-                    // Let ComfyUI restore the widget values first
+                    const values = info?.widgets_values || [];
+                    const promptEntryCount = Math.floor((values.length - 1) / 3);
+                    // Remove all but the first prompt entry (if any)
+                    while (this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length > 1) {
+                        const entryNum = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_enabled")).length;
+                        const widgetsToRemove = this.widgets.filter(w =>
+                            w.name === `prompt_${entryNum}_enabled` ||
+                            w.name === `prompt_${entryNum}_category` ||
+                            w.name === `prompt_${entryNum}_name` ||
+                            w.name === `❌ Remove Entry ${entryNum}`
+                        );
+                        widgetsToRemove.forEach(widget => {
+                            const index = this.widgets.indexOf(widget);
+                            if (index > -1) {
+                                this.widgets.splice(index, 1);
+                            }
+                        });
+                    }
+                    // Add prompt entries with correct values (skip the first, which already exists)
+                    for (let i = 1; i < promptEntryCount; i++) {
+                        const idx = 1 + i * 3;
+                        addPromptEntry.call(this, {
+                            enabled: values[idx],
+                            category: values[idx + 1],
+                            name: values[idx + 2]
+                        });
+                    }
                     if (originalOnConfigure) {
                         originalOnConfigure.call(this, info);
                     }
-                    // After widgets are restored, update all prompt dropdowns to match restored categories
                     setTimeout(async () => {
-                        // For each prompt_N_category, update its prompt_N_name dropdown
                         const categoryWidgets = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_category"));
                         for (const categoryWidget of categoryWidgets) {
                             const entryNum = categoryWidget.name.split('_')[1];
@@ -171,11 +177,9 @@ app.registerExtension({
                             if (promptWidget && categoryWidget.value) {
                                 const prompts = await loadPrompts(categoryWidget.value);
                                 promptWidget.options.values = prompts;
-                                // If the restored value is not in the new list, pick the first
                                 if (!prompts.includes(promptWidget.value)) {
                                     promptWidget.value = prompts.length > 0 ? prompts[0] : "";
                                 }
-                                // Update the DOM element if it exists
                                 if (promptWidget.inputEl) {
                                     promptWidget.inputEl.innerHTML = "";
                                     prompts.forEach(prompt => {
