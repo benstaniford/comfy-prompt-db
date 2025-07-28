@@ -222,6 +222,33 @@ app.registerExtension({
                 // Set up the first entry
                 setupCategoryHandler(1);
                 
+                // Function to refresh all dropdowns with fresh data from the server
+                const refreshAllDropdowns = async () => {
+                    console.log('[PromptStack] Refreshing all dropdowns with fresh data');
+                    
+                    // Get all category widgets
+                    const categoryWidgets = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_category"));
+                    
+                    for (const categoryWidget of categoryWidgets) {
+                        const entryNum = categoryWidget.name.split('_')[1];
+                        const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
+                        
+                        if (promptWidget) {
+                            const currentCategory = categoryWidget.value;
+                            const currentPrompt = promptWidget.value;
+                            
+                            // Update category dropdown with fresh data
+                            await updateCategoryDropdown(categoryWidget, currentCategory);
+                            
+                            // Update prompt dropdown with fresh data  
+                            await updatePromptDropdown(categoryWidget, promptWidget, currentPrompt);
+                        }
+                    }
+                    
+                    // Update preview after refreshing dropdowns
+                    setTimeout(() => updatePreview(), 100);
+                };
+                
                 // Function to add a new prompt entry (now supports initial values and entry number for restore)
                 const addPromptEntry = async (init = {}, entryNum = -1) => {
                     if (entryNum === -1) {
@@ -269,6 +296,11 @@ app.registerExtension({
                 // Add the "Add Prompt" button
                 const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
                 
+                // Add the "Refresh Dropdowns" button
+                const refreshButton = this.addWidget("button", "🔄 Refresh Dropdowns", "", () => { 
+                    refreshAllDropdowns.call(this);
+                });
+                
                 // Function to create preview widgets
                 const createPreviewWidgets = () => {
                     // Find the preview_text widget that ComfyUI created from the Python backend
@@ -301,6 +333,8 @@ app.registerExtension({
                 // Wait for ComfyUI to add the separator widget, then add preview widgets after it
                 setTimeout(() => {
                     createPreviewWidgets();
+                    // Also refresh all dropdowns to ensure they have the latest data
+                    refreshAllDropdowns();
                 }, 50);
                 
                 // Let ComfyUI handle widget serialization
@@ -317,7 +351,7 @@ app.registerExtension({
                         this.widgets.splice(this.widgets.indexOf(widget), 1);
                     });
                     // Remove all remove buttons
-                    const removeButtons = this.widgets.filter(w => w.type === 'button' && w.label && w.label.startsWith('❌ Remove Entry'));
+                    const removeButtons = this.widgets.filter(w => w.type === 'button' && w.label && (w.label.startsWith('❌ Remove Entry') || w.label === '➕ Add Prompt Entry' || w.label === '🔄 Refresh Dropdowns'));
                     console.log('[PromptStack] Removing remove buttons:', removeButtons.map(w => w.label));
                     removeButtons.forEach(widget => {
                         this.widgets.splice(this.widgets.indexOf(widget), 1);
@@ -352,27 +386,20 @@ app.registerExtension({
                         console.log(`[PromptStack] Adding prompt entry #${i+1}:`, promptEntries[i]);
                         await addPromptEntry.call(this, promptEntries[i], i + 1);
                     }
+                    
+                    // Re-add the control buttons after restoring entries
+                    this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
+                    this.addWidget("button", "🔄 Refresh Dropdowns", "", () => { 
+                        refreshAllDropdowns.call(this);
+                    });
 
                     // Log all widgets after restore
                     console.log('[PromptStack] Widgets after restore:', this.widgets.map(w => w.name || w.label || w.type));
 
-                    //Final pass to ensure all dropdowns are correctly populated
+                    //Final pass to ensure all dropdowns are correctly populated with fresh data
                     setTimeout(async () => {
-                        const categoryWidgets = this.widgets.filter(w => w.name && w.name.startsWith("prompt_") && w.name.endsWith("_category"));
-                        for (const widget of categoryWidgets) {
-                            const entryNum = widget.name.split('_')[1];
-                            const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
-                            if (promptWidget) {
-                                console.log(`[PromptStack] Updating dropdowns for entry #${entryNum}:`, widget.value, promptWidget.value);
-                                // Update category dropdown first
-                                await updateCategoryDropdown(widget, widget.value);
-                                // Then update prompt dropdown
-                                await updatePromptDropdown(widget, promptWidget, promptWidget.value);
-                            }
-                        }
-                        
-                        // Update preview after all dropdowns are populated
-                        setTimeout(() => updatePreview(), 300);
+                        console.log('[PromptStack] Final refresh of all dropdowns after restore');
+                        await refreshAllDropdowns();
                     }, 200);
                 };
 
@@ -381,8 +408,8 @@ app.registerExtension({
                     // Default serialization for separator
                     const values = [];
                     for (const widget of this.widgets) {
-                        // Only serialize widgets that are not remove buttons, preview widgets, or separators
-                        if (widget.type === 'button' && widget.label && widget.label.startsWith('❌ Remove Entry')) continue;
+                        // Only serialize widgets that are not control buttons, preview widgets, or separators
+                        if (widget.type === 'button' && widget.label && (widget.label.startsWith('❌ Remove Entry') || widget.label === '➕ Add Prompt Entry' || widget.label === '🔄 Refresh Dropdowns')) continue;
                         if (widget.name === 'preview_text') continue; // Don't serialize preview text
                         if (widget.type === 'text' && widget.label && widget.label.startsWith('────────────────')) continue;
                         if (widget.type === 'text' && widget.label && widget.label === 'Stacked Prompts:') continue;
