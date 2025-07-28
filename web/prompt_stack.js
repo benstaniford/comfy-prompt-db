@@ -334,11 +334,12 @@ app.registerExtension({
                         createPreviewWidgets();
                     }, 50);
 
-                    // Parse prompt entries from widgets_values (category, name, [skip text], enabled)
+                    // Parse prompt entries from widgets_values
                     const values = info?.widgets_values || [];
                     console.log('[PromptStack] widgets_values:', values);
                     let promptEntries = [];
-                    for (let i = 1; i + 3 < values.length; i += 4) {
+                    // Skip separator (index 0) and preview_text (index 1), start parsing from index 2
+                    for (let i = 2; i + 3 < values.length; i += 4) {
                         promptEntries.push({
                             enabled: values[i + 1],
                             category: values[i + 2],
