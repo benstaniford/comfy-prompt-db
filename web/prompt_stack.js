@@ -296,11 +296,6 @@ app.registerExtension({
                 // Add the "Add Prompt" button
                 const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
                 
-                // Add the "Refresh Dropdowns" button
-                const refreshButton = this.addWidget("button", "🔄 Refresh Dropdowns", "", () => { 
-                    refreshAllDropdowns.call(this);
-                });
-                
                 // Function to create preview widgets
                 const createPreviewWidgets = () => {
                     // Find the preview_text widget that ComfyUI created from the Python backend
@@ -323,6 +318,14 @@ app.registerExtension({
                                 // Auto-update preview when separator changes
                                 setTimeout(() => updatePreview(), 100);
                             };
+                        }
+                        
+                        // Add the "Reload DB" button right after preview setup
+                        const existingButton = this.widgets.find(w => w.type === 'button' && w.label === '🔄 Reload DB');
+                        if (!existingButton) {
+                            this.addWidget("button", "🔄 Reload DB", "", () => { 
+                                refreshAllDropdowns.call(this);
+                            });
                         }
                         
                         this.computeSize();
@@ -351,7 +354,7 @@ app.registerExtension({
                         this.widgets.splice(this.widgets.indexOf(widget), 1);
                     });
                     // Remove all remove buttons
-                    const removeButtons = this.widgets.filter(w => w.type === 'button' && w.label && (w.label.startsWith('❌ Remove Entry') || w.label === '➕ Add Prompt Entry' || w.label === '🔄 Refresh Dropdowns'));
+                    const removeButtons = this.widgets.filter(w => w.type === 'button' && w.label && (w.label.startsWith('❌ Remove Entry') || w.label === '➕ Add Prompt Entry' || w.label === '🔄 Reload DB'));
                     console.log('[PromptStack] Removing remove buttons:', removeButtons.map(w => w.label));
                     removeButtons.forEach(widget => {
                         this.widgets.splice(this.widgets.indexOf(widget), 1);
@@ -373,6 +376,7 @@ app.registerExtension({
                     console.log('[PromptStack] widgets_values:', values);
                     let promptEntries = [];
                     // Skip separator (index 0) and preview_text (index 1), start parsing from index 2
+                    // Note: Reload button is not serialized, so it won't be in the values array
                     for (let i = 2; i + 3 < values.length; i += 4) {
                         promptEntries.push({
                             enabled: values[i + 1],
@@ -389,9 +393,6 @@ app.registerExtension({
                     
                     // Re-add the control buttons after restoring entries
                     this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
-                    this.addWidget("button", "🔄 Refresh Dropdowns", "", () => { 
-                        refreshAllDropdowns.call(this);
-                    });
 
                     // Log all widgets after restore
                     console.log('[PromptStack] Widgets after restore:', this.widgets.map(w => w.name || w.label || w.type));
@@ -409,7 +410,7 @@ app.registerExtension({
                     const values = [];
                     for (const widget of this.widgets) {
                         // Only serialize widgets that are not control buttons, preview widgets, or separators
-                        if (widget.type === 'button' && widget.label && (widget.label.startsWith('❌ Remove Entry') || widget.label === '➕ Add Prompt Entry' || widget.label === '🔄 Refresh Dropdowns')) continue;
+                        if (widget.type === 'button' && widget.label && (widget.label.startsWith('❌ Remove Entry') || widget.label === '➕ Add Prompt Entry' || widget.label === '🔄 Reload DB')) continue;
                         if (widget.name === 'preview_text') continue; // Don't serialize preview text
                         if (widget.type === 'text' && widget.label && widget.label.startsWith('────────────────')) continue;
                         if (widget.type === 'text' && widget.label && widget.label === 'Stacked Prompts:') continue;
