@@ -69,20 +69,20 @@ class PromptStack:
                     prompts_db = json.load(f)
                     categories = list(prompts_db.keys())
                     
-                    # Collect all possible prompt names from all categories
-                    all_prompt_names = set()
-                    for category_prompts in prompts_db.values():
-                        if isinstance(category_prompts, dict):
-                            all_prompt_names.update(category_prompts.keys())
-                    
-                    prompt_names = sorted(list(all_prompt_names))
+                    # Get ALL prompt names from ALL categories for validation
+                    prompt_names_set = set()
+                    for category in categories:
+                        category_prompts = prompts_db.get(category, {})
+                        prompt_names_set.update(category_prompts.keys())
+                    prompt_names = list(prompt_names_set)
                         
         except Exception as e:
             print(f"Error loading categories for PromptStack INPUT_TYPES: {e}")
         
-        # Ensure we have at least one category
+        # Ensure we have at least one category and prompt
         if not categories:
             categories = ["default"]
+        if not prompt_names:
             prompt_names = ["new prompt"]
         
         return {
