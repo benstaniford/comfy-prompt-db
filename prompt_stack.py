@@ -88,6 +88,7 @@ class PromptStack:
         return {
             "required": {
                 "separator": ("STRING", {"default": ", ", "multiline": False}),
+                "preview_text": ("STRING", {"multiline": True, "default": "Preview of stacked prompts will appear here..."}),
             },
             "optional": FlexibleOptionalInputType(any_type, {
                 "prompt_1_category": (categories, {"default": categories[0]}),
@@ -102,7 +103,7 @@ class PromptStack:
     FUNCTION = "stack_prompts"
     CATEGORY = "text"
     
-    def stack_prompts(self, separator=", ", **kwargs):
+    def stack_prompts(self, separator=", ", preview_text="", **kwargs):
         stacked_prompts = []
         prompts_db = {}
         if os.path.exists(self.prompts_file):
