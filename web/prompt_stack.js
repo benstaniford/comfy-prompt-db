@@ -288,21 +288,14 @@ app.registerExtension({
                         previewTextWidget.inputEl.placeholder = "Preview of stacked prompts will appear here...";
                         previewTextWidget.inputEl.style.backgroundColor = "#f5f5f5";
                         
-                        const previewButton = this.addWidget("button", "🔍 Update Preview", "", async () => {
-                            await updatePreview();
-                        });
-                        
                         // Move preview widgets to be right after separator
                         const previewTextIndex = this.widgets.indexOf(previewTextWidget);
-                        const previewButtonIndex = this.widgets.indexOf(previewButton);
                         
                         // Remove from current positions
-                        this.widgets.splice(previewButtonIndex, 1);
                         this.widgets.splice(previewTextIndex, 1);
                         
                         // Insert after separator
                         this.widgets.splice(separatorIndex + 1, 0, previewTextWidget);
-                        this.widgets.splice(separatorIndex + 2, 0, previewButton);
                         
                         // Set up separator widget callback to auto-update preview
                         const originalSeparatorCallback = separatorWidget.callback;
