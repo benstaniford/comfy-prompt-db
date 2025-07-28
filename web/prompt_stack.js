@@ -219,9 +219,6 @@ app.registerExtension({
                     }
                 };
                 
-                // Set up the first entry
-                setupCategoryHandler(1);
-                
                 // Function to refresh all dropdowns with fresh data from the server
                 const refreshAllDropdowns = async () => {
                     console.log('[PromptStack] Refreshing all dropdowns with fresh data');
@@ -266,9 +263,10 @@ app.registerExtension({
                     
                     let selectedPrompt = init.name || (prompts.length > 0 ? prompts[0] : "");
                     
-                    const enabledWidget = this.addWidget("toggle", `prompt_${entryNum}_enabled`, init.enabled !== undefined ? init.enabled : true, null);
+                    // Create widgets in the same order as the Python backend: category, name, enabled
                     const categoryWidget = this.addWidget("combo", `prompt_${entryNum}_category`, selectedCategory, null, { values: [...categories] });
                     const promptWidget = this.addWidget("combo", `prompt_${entryNum}_name`, selectedPrompt, null, { values: [...prompts] });
+                    const enabledWidget = this.addWidget("toggle", `prompt_${entryNum}_enabled`, init.enabled !== undefined ? init.enabled : true, null);
                     
                     setupCategoryHandler(entryNum);
                     
@@ -292,9 +290,6 @@ app.registerExtension({
                     this.computeSize();
                     this.setDirtyCanvas(true, true);
                 };
-                
-                // Add the "Add Prompt" button
-                const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
                 
                 // Function to create preview widgets
                 const createPreviewWidgets = () => {
@@ -320,22 +315,46 @@ app.registerExtension({
                             };
                         }
                         
-                        // Add the "Reload DB" button right after preview setup
-                        const existingButton = this.widgets.find(w => w.type === 'button' && w.label === '🔄 Reload DB');
-                        if (!existingButton) {
-                            this.addWidget("button", "🔄 Reload DB", "", () => { 
-                                refreshAllDropdowns.call(this);
-                            });
-                        }
-                        
                         this.computeSize();
                         this.setDirtyCanvas(true, true);
                     }
                 };
                 
                 // Wait for ComfyUI to add the separator widget, then add preview widgets after it
+
                 setTimeout(() => {
                     createPreviewWidgets();
+                    
+                    // Find the position after preview_text widget
+                    const previewIndex = this.widgets.findIndex(w => w.name === 'preview_text');
+                    if (previewIndex !== -1) {
+                        // Insert Reload DB button right after preview_text
+                        const reloadButton = this.addWidget("button", "🔄 Reload DB", "", () => { 
+                            refreshAllDropdowns.call(this);
+                        });
+                        // Move the reload button to the correct position (after preview)
+                        const reloadIndex = this.widgets.indexOf(reloadButton);
+                        if (reloadIndex > previewIndex + 1) {
+                            // Remove from current position and insert at correct position
+                            this.widgets.splice(reloadIndex, 1);
+                            this.widgets.splice(previewIndex + 1, 0, reloadButton);
+                        }
+                        
+                        // Insert Add Prompt Entry button after Reload DB button
+                        const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
+                        // Move the add button to the correct position (after reload button)
+                        const addIndex = this.widgets.indexOf(addButton);
+                        const currentReloadIndex = this.widgets.indexOf(reloadButton);
+                        if (addIndex > currentReloadIndex + 1) {
+                            // Remove from current position and insert at correct position
+                            this.widgets.splice(addIndex, 1);
+                            this.widgets.splice(currentReloadIndex + 1, 0, addButton);
+                        }
+                    }
+                    
+                    // Set up the first entry after adding control buttons
+                    setupCategoryHandler(1);
+                    
                     // Also refresh all dropdowns to ensure they have the latest data
                     refreshAllDropdowns();
                 }, 50);
@@ -377,11 +396,12 @@ app.registerExtension({
                     let promptEntries = [];
                     // Skip separator (index 0) and preview_text (index 1), start parsing from index 2
                     // Note: Reload button is not serialized, so it won't be in the values array
-                    for (let i = 2; i + 3 < values.length; i += 4) {
+                    // Order is: category, name, enabled (matching Python backend)
+                    for (let i = 3; i + 3 < values.length; i += 4) {
                         promptEntries.push({
-                            enabled: values[i + 1],
-                            category: values[i + 2],
-                            name: values[i + 3]
+                            category: values[i + 1],
+                            name: values[i + 2],
+                            enabled: values[i + 3]
                         });
                     }
                     console.log('[PromptStack] Parsed promptEntries:', promptEntries);
@@ -392,6 +412,11 @@ app.registerExtension({
                     }
                     
                     // Re-add the control buttons after restoring entries
+                    // Add Reload DB button
+                    this.addWidget("button", "🔄 Reload DB", "", () => { 
+                        refreshAllDropdowns.call(this);
+                    });
+                    // Add the Add Prompt Entry button
                     this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
 
                     // Log all widgets after restore
