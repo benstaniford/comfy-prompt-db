@@ -220,8 +220,8 @@ app.registerExtension({
                             updatePromptDropdown(categoryWidget, promptWidget);
                         }
                         
-                        // Add remove button for the first entry if it doesn't exist (only for entry 1 from Python backend)
-                        if (entryNum === 1) {
+                        // Add remove button for the first entry if it doesn't exist (only for NEW entry 1 from Python backend, not during restoration)
+                        if (entryNum === 1 && !this._isRestoring) {
                             const existingRemoveButton = this.widgets.find(w => w.type === 'button' && w.label === `❌ Remove Entry ${entryNum}`);
                             if (!existingRemoveButton) {
                                 this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
