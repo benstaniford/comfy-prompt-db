@@ -13,6 +13,9 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function() {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 
+                // Flag to track if we're in a restore scenario
+                this._isRestoring = false;
+                
                 // Function to load categories
                 const loadCategories = async () => {
                     try {
@@ -340,40 +343,43 @@ app.registerExtension({
                 // Wait for ComfyUI to add the separator widget, then add preview widgets after it
 
                 setTimeout(() => {
-                    createPreviewWidgets();
-                    
-                    // Find the position after preview_text widget
-                    const previewIndex = this.widgets.findIndex(w => w.name === 'preview_text');
-                    if (previewIndex !== -1) {
-                        // Insert Reload DB button right after preview_text
-                        const reloadButton = this.addWidget("button", "🔄 Reload DB", "", () => { 
-                            refreshAllDropdowns.call(this);
-                        });
-                        // Move the reload button to the correct position (after preview)
-                        const reloadIndex = this.widgets.indexOf(reloadButton);
-                        if (reloadIndex > previewIndex + 1) {
-                            // Remove from current position and insert at correct position
-                            this.widgets.splice(reloadIndex, 1);
-                            this.widgets.splice(previewIndex + 1, 0, reloadButton);
+                    // Only initialize if we're not in a restore scenario
+                    if (!this._isRestoring) {
+                        createPreviewWidgets();
+                        
+                        // Find the position after preview_text widget
+                        const previewIndex = this.widgets.findIndex(w => w.name === 'preview_text');
+                        if (previewIndex !== -1) {
+                            // Insert Reload DB button right after preview_text
+                            const reloadButton = this.addWidget("button", "🔄 Reload DB", "", () => { 
+                                refreshAllDropdowns.call(this);
+                            });
+                            // Move the reload button to the correct position (after preview)
+                            const reloadIndex = this.widgets.indexOf(reloadButton);
+                            if (reloadIndex > previewIndex + 1) {
+                                // Remove from current position and insert at correct position
+                                this.widgets.splice(reloadIndex, 1);
+                                this.widgets.splice(previewIndex + 1, 0, reloadButton);
+                            }
+                            
+                            // Insert Add Prompt Entry button after Reload DB button
+                            const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
+                            // Move the add button to the correct position (after reload button)
+                            const addIndex = this.widgets.indexOf(addButton);
+                            const currentReloadIndex = this.widgets.indexOf(reloadButton);
+                            if (addIndex > currentReloadIndex + 1) {
+                                // Remove from current position and insert at correct position
+                                this.widgets.splice(addIndex, 1);
+                                this.widgets.splice(currentReloadIndex + 1, 0, addButton);
+                            }
                         }
                         
-                        // Insert Add Prompt Entry button after Reload DB button
-                        const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
-                        // Move the add button to the correct position (after reload button)
-                        const addIndex = this.widgets.indexOf(addButton);
-                        const currentReloadIndex = this.widgets.indexOf(reloadButton);
-                        if (addIndex > currentReloadIndex + 1) {
-                            // Remove from current position and insert at correct position
-                            this.widgets.splice(addIndex, 1);
-                            this.widgets.splice(currentReloadIndex + 1, 0, addButton);
-                        }
+                        // Set up the first entry after adding control buttons
+                        setupCategoryHandler(1);
+                        
+                        // Also refresh all dropdowns to ensure they have the latest data
+                        refreshAllDropdowns();
                     }
-                    
-                    // Set up the first entry after adding control buttons
-                    setupCategoryHandler(1);
-                    
-                    // Also refresh all dropdowns to ensure they have the latest data
-                    refreshAllDropdowns();
                 }, 50);
                 
                 // Let ComfyUI handle widget serialization
@@ -383,6 +389,9 @@ app.registerExtension({
                 const originalOnConfigure = this.onConfigure;
                 this.onConfigure = async function(info) {
                     console.log('[PromptStack] onConfigure called', info);
+                    
+                    // Set the restore flag to prevent normal initialization
+                    this._isRestoring = true;
                     // Remove all prompt widgets except separator and add button
                     const widgetsToRemove = this.widgets.filter(w => w.name && w.name.startsWith('prompt_'));
                     console.log('[PromptStack] Removing prompt widgets:', widgetsToRemove.map(w => w.name));
@@ -405,6 +414,33 @@ app.registerExtension({
                     // Re-setup preview widgets after restoration
                     setTimeout(() => {
                         createPreviewWidgets();
+                        
+                        // Add control buttons during restore
+                        const previewIndex = this.widgets.findIndex(w => w.name === 'preview_text');
+                        if (previewIndex !== -1) {
+                            // Insert Reload DB button right after preview_text
+                            const reloadButton = this.addWidget("button", "🔄 Reload DB", "", () => { 
+                                refreshAllDropdowns.call(this);
+                            });
+                            // Move the reload button to the correct position (after preview)
+                            const reloadIndex = this.widgets.indexOf(reloadButton);
+                            if (reloadIndex > previewIndex + 1) {
+                                // Remove from current position and insert at correct position
+                                this.widgets.splice(reloadIndex, 1);
+                                this.widgets.splice(previewIndex + 1, 0, reloadButton);
+                            }
+                            
+                            // Insert Add Prompt Entry button after Reload DB button
+                            const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
+                            // Move the add button to the correct position (after reload button)
+                            const addIndex = this.widgets.indexOf(addButton);
+                            const currentReloadIndex = this.widgets.indexOf(reloadButton);
+                            if (addIndex > currentReloadIndex + 1) {
+                                // Remove from current position and insert at correct position
+                                this.widgets.splice(addIndex, 1);
+                                this.widgets.splice(currentReloadIndex + 1, 0, addButton);
+                            }
+                        }
                     }, 50);
 
                     // Parse prompt entries from widgets_values
@@ -428,13 +464,8 @@ app.registerExtension({
                         await addPromptEntry.call(this, promptEntries[i], i + 1);
                     }
                     
-                    // Re-add the control buttons after restoring entries
-                    // Add Reload DB button
-                    this.addWidget("button", "🔄 Reload DB", "", () => { 
-                        refreshAllDropdowns.call(this);
-                    });
-                    // Add the Add Prompt Entry button
-                    this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
+                    // Don't re-add control buttons here since they're handled in the setTimeout above
+                    // This prevents duplicates when loading saved workflows
 
                     // Log all widgets after restore
                     console.log('[PromptStack] Widgets after restore:', this.widgets.map(w => w.name || w.label || w.type));
