@@ -290,16 +290,19 @@ app.registerExtension({
                     
                     setupCategoryHandler(entryNum);
                     
-                    this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
-                        const widgetsToRemove = this.widgets.filter(w =>
-                            (w.name && (w.name.startsWith(`prompt_${entryNum}_`) || w.name === `❌ Remove Entry ${entryNum}`))
-                        );
-                        widgetsToRemove.forEach(widget => {
-                            this.widgets.splice(this.widgets.indexOf(widget), 1);
+                    const existingRemoveButton = this.widgets.find(w => w.type === 'button' && w.label === `❌ Remove Entry ${entryNum}`);
+                    if (!existingRemoveButton) {
+                        this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
+                            const widgetsToRemove = this.widgets.filter(w =>
+                                (w.name && (w.name.startsWith(`prompt_${entryNum}_`) || w.name === `❌ Remove Entry ${entryNum}`))
+                            );
+                            widgetsToRemove.forEach(widget => {
+                                this.widgets.splice(this.widgets.indexOf(widget), 1);
+                            });
+                            this.computeSize();
+                            this.setDirtyCanvas(true, true);
                         });
-                        this.computeSize();
-                        this.setDirtyCanvas(true, true);
-                    });
+                    }
 
                     // Manually set the value for the restored prompt name, as the initial list might not contain it
                     if (init.name) {
