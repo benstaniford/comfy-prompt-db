@@ -282,7 +282,7 @@ app.registerExtension({
                         
                         // Add preview widgets
                         const previewTextWidget = this.addWidget("text", "preview_text", "", null, { multiline: true });
-                        previewTextWidget.inputEl.style.minHeight = "60px";
+                        previewTextWidget.inputEl.style.minHeight = "180px";
                         previewTextWidget.inputEl.style.resize = "vertical";
                         previewTextWidget.inputEl.readOnly = true;
                         previewTextWidget.inputEl.placeholder = "Preview of stacked prompts will appear here...";
@@ -402,7 +402,6 @@ app.registerExtension({
                     for (const widget of this.widgets) {
                         // Only serialize widgets that are not remove buttons, preview widgets, or separators
                         if (widget.type === 'button' && widget.label && widget.label.startsWith('❌ Remove Entry')) continue;
-                        if (widget.type === 'button' && widget.label && widget.label.startsWith('🔍 Update Preview')) continue;
                         if (widget.name === 'preview_text') continue;
                         if (widget.type === 'text' && widget.label && widget.label.startsWith('────────────────')) continue;
                         if (widget.type === 'text' && widget.label && widget.label === 'Stacked Prompts:') continue;
