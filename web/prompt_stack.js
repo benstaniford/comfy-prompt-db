@@ -277,7 +277,6 @@ app.registerExtension({
                         // Make sure it's read-only and styled properly
                         if (previewWidget.inputEl) {
                             previewWidget.inputEl.readOnly = true;
-                            previewWidget.inputEl.style.backgroundColor = "#f5f5f5";
                             previewWidget.inputEl.placeholder = "Preview of stacked prompts will appear here...";
                         }
                         
