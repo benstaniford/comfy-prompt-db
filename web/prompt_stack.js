@@ -216,6 +216,23 @@ app.registerExtension({
                         if (categoryWidget.value) {
                             updatePromptDropdown(categoryWidget, promptWidget);
                         }
+                        
+                        // Add remove button for the first entry if it doesn't exist (only for entry 1 from Python backend)
+                        if (entryNum === 1) {
+                            const existingRemoveButton = this.widgets.find(w => w.type === 'button' && w.label === `❌ Remove Entry ${entryNum}`);
+                            if (!existingRemoveButton) {
+                                this.addWidget("button", `❌ Remove Entry ${entryNum}`, "", () => {
+                                    const widgetsToRemove = this.widgets.filter(w =>
+                                        (w.name && (w.name.startsWith(`prompt_${entryNum}_`) || w.name === `❌ Remove Entry ${entryNum}`))
+                                    );
+                                    widgetsToRemove.forEach(widget => {
+                                        this.widgets.splice(this.widgets.indexOf(widget), 1);
+                                    });
+                                    this.computeSize();
+                                    this.setDirtyCanvas(true, true);
+                                });
+                            }
+                        }
                     }
                 };
                 
