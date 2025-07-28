@@ -271,41 +271,28 @@ app.registerExtension({
                 
                 // Function to create preview widgets
                 const createPreviewWidgets = () => {
-                    // Check if preview widgets already exist
-                    if (this.widgets.find(w => w.name === 'preview_text')) {
-                        return; // Already exists
-                    }
-                    
-                    const separatorWidget = this.widgets.find(w => w.name === 'separator');
-                    if (separatorWidget) {
-                        const separatorIndex = this.widgets.indexOf(separatorWidget);
-                        
-                        // Add preview widgets
-                        const previewTextWidget = this.addWidget("text", "preview_text", "", null, { multiline: true });
-                        previewTextWidget.inputEl.style.minHeight = "180px";
-                        previewTextWidget.inputEl.style.resize = "vertical";
-                        previewTextWidget.inputEl.readOnly = true;
-                        previewTextWidget.inputEl.placeholder = "Preview of stacked prompts will appear here...";
-                        previewTextWidget.inputEl.style.backgroundColor = "#f5f5f5";
-                        
-                        // Move preview widgets to be right after separator
-                        const previewTextIndex = this.widgets.indexOf(previewTextWidget);
-                        
-                        // Remove from current positions
-                        this.widgets.splice(previewTextIndex, 1);
-                        
-                        // Insert after separator
-                        this.widgets.splice(separatorIndex + 1, 0, previewTextWidget);
+                    // Find the preview_text widget that ComfyUI created from the Python backend
+                    const previewWidget = this.widgets.find(w => w.name === 'preview_text');
+                    if (previewWidget) {
+                        // Make sure it's read-only and styled properly
+                        if (previewWidget.inputEl) {
+                            previewWidget.inputEl.readOnly = true;
+                            previewWidget.inputEl.style.backgroundColor = "#f5f5f5";
+                            previewWidget.inputEl.placeholder = "Preview of stacked prompts will appear here...";
+                        }
                         
                         // Set up separator widget callback to auto-update preview
-                        const originalSeparatorCallback = separatorWidget.callback;
-                        separatorWidget.callback = function(value) {
-                            if (originalSeparatorCallback) {
-                                originalSeparatorCallback.call(this, value);
-                            }
-                            // Auto-update preview when separator changes
-                            setTimeout(() => updatePreview(), 100);
-                        };
+                        const separatorWidget = this.widgets.find(w => w.name === 'separator');
+                        if (separatorWidget) {
+                            const originalSeparatorCallback = separatorWidget.callback;
+                            separatorWidget.callback = function(value) {
+                                if (originalSeparatorCallback) {
+                                    originalSeparatorCallback.call(this, value);
+                                }
+                                // Auto-update preview when separator changes
+                                setTimeout(() => updatePreview(), 100);
+                            };
+                        }
                         
                         this.computeSize();
                         this.setDirtyCanvas(true, true);
@@ -336,12 +323,6 @@ app.registerExtension({
                     removeButtons.forEach(widget => {
                         this.widgets.splice(this.widgets.indexOf(widget), 1);
                     });
-                    // Remove preview widgets
-                    const previewWidgets = this.widgets.filter(w => w.name === 'preview_text' || (w.type === 'button' && w.label && w.label.startsWith('🔍 Update Preview')));
-                    console.log('[PromptStack] Removing preview widgets:', previewWidgets.map(w => w.name || w.label));
-                    previewWidgets.forEach(widget => {
-                        this.widgets.splice(this.widgets.indexOf(widget), 1);
-                    });
 
                     // Let ComfyUI restore static widgets (like separator)
                     if (originalOnConfigure) {
@@ -349,7 +330,7 @@ app.registerExtension({
                         originalOnConfigure.apply(this, arguments);
                     }
 
-                    // Re-add preview widgets after separator
+                    // Re-setup preview widgets after restoration
                     setTimeout(() => {
                         createPreviewWidgets();
                     }, 50);
@@ -402,7 +383,7 @@ app.registerExtension({
                     for (const widget of this.widgets) {
                         // Only serialize widgets that are not remove buttons, preview widgets, or separators
                         if (widget.type === 'button' && widget.label && widget.label.startsWith('❌ Remove Entry')) continue;
-                        if (widget.name === 'preview_text') continue;
+                        if (widget.name === 'preview_text') continue; // Don't serialize preview text
                         if (widget.type === 'text' && widget.label && widget.label.startsWith('────────────────')) continue;
                         if (widget.type === 'text' && widget.label && widget.label === 'Stacked Prompts:') continue;
                         if (typeof widget.serializeValue === 'function') {
