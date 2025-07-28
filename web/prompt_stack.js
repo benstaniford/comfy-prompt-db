@@ -56,6 +56,69 @@ app.registerExtension({
                     }
                     return [];
                 };
+
+                // Function to load prompt text
+                const loadPromptText = async (category, promptName) => {
+                    try {
+                        const response = await api.fetchApi("/prompt_db_text", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                category: category,
+                                prompt_name: promptName
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data.prompt_text || "";
+                        }
+                    } catch (error) {
+                        console.error("Error loading prompt text:", error);
+                    }
+                    return "";
+                };
+                
+                // Function to build and update preview
+                const updatePreview = async () => {
+                    const previewWidget = this.widgets.find(w => w.name === 'preview_text');
+                    const separatorWidget = this.widgets.find(w => w.name === 'separator');
+                    
+                    if (!previewWidget || !separatorWidget) return;
+                    
+                    const separator = separatorWidget.value || ", ";
+                    const stacked_prompts = [];
+                    
+                    // Find all prompt entries by scanning for enabled widgets
+                    const enabledWidgets = this.widgets.filter(w => w.name && w.name.startsWith('prompt_') && w.name.endsWith('_enabled'));
+                    
+                    for (const enabledWidget of enabledWidgets) {
+                        const entryNum = enabledWidget.name.split('_')[1];
+                        const categoryWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_category`);
+                        const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
+                        
+                        if (enabledWidget.value && categoryWidget && promptWidget && categoryWidget.value && promptWidget.value) {
+                            try {
+                                const promptText = await loadPromptText(categoryWidget.value, promptWidget.value);
+                                if (promptText) {
+                                    stacked_prompts.push(promptText);
+                                }
+                            } catch (error) {
+                                console.error("Error loading prompt text for preview:", error);
+                            }
+                        }
+                    }
+                    
+                    const result = stacked_prompts.join(separator);
+                    previewWidget.value = result;
+                    
+                    // Update the DOM element if it exists
+                    if (previewWidget.inputEl) {
+                        previewWidget.inputEl.value = result;
+                    }
+                };
                 
                 // Function to update category dropdown
                 const updateCategoryDropdown = async (categoryWidget, restoredCategoryName = null) => {
@@ -117,15 +180,37 @@ app.registerExtension({
                 const setupCategoryHandler = (entryNum) => {
                     const categoryWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_category`);
                     const promptWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_name`);
+                    const enabledWidget = this.widgets.find(w => w.name === `prompt_${entryNum}_enabled`);
                     
                     if (categoryWidget && promptWidget) {
-                        const originalCallback = categoryWidget.callback;
+                        const originalCategoryCallback = categoryWidget.callback;
                         categoryWidget.callback = function(value) {
-                            if (originalCallback) {
-                                originalCallback.call(this, value);
+                            if (originalCategoryCallback) {
+                                originalCategoryCallback.call(this, value);
                             }
                             updatePromptDropdown(categoryWidget, promptWidget);
                         };
+                        
+                        const originalPromptCallback = promptWidget.callback;
+                        promptWidget.callback = function(value) {
+                            if (originalPromptCallback) {
+                                originalPromptCallback.call(this, value);
+                            }
+                            // Auto-update preview when prompt selection changes
+                            setTimeout(() => updatePreview(), 100);
+                        };
+                        
+                        // Add enabled widget callback if it exists
+                        if (enabledWidget) {
+                            const originalEnabledCallback = enabledWidget.callback;
+                            enabledWidget.callback = function(value) {
+                                if (originalEnabledCallback) {
+                                    originalEnabledCallback.call(this, value);
+                                }
+                                // Auto-update preview when enabled state changes
+                                setTimeout(() => updatePreview(), 100);
+                            };
+                        }
                         
                         // Load initial prompts
                         if (categoryWidget.value) {
@@ -184,6 +269,61 @@ app.registerExtension({
                 // Add the "Add Prompt" button
                 const addButton = this.addWidget("button", "➕ Add Prompt Entry", "", () => { addPromptEntry.call(this); });
                 
+                // Function to create preview widgets
+                const createPreviewWidgets = () => {
+                    // Check if preview widgets already exist
+                    if (this.widgets.find(w => w.name === 'preview_text')) {
+                        return; // Already exists
+                    }
+                    
+                    const separatorWidget = this.widgets.find(w => w.name === 'separator');
+                    if (separatorWidget) {
+                        const separatorIndex = this.widgets.indexOf(separatorWidget);
+                        
+                        // Add preview widgets
+                        const previewTextWidget = this.addWidget("text", "preview_text", "", null, { multiline: true });
+                        previewTextWidget.inputEl.style.minHeight = "60px";
+                        previewTextWidget.inputEl.style.resize = "vertical";
+                        previewTextWidget.inputEl.readOnly = true;
+                        previewTextWidget.inputEl.placeholder = "Preview of stacked prompts will appear here...";
+                        previewTextWidget.inputEl.style.backgroundColor = "#f5f5f5";
+                        
+                        const previewButton = this.addWidget("button", "🔍 Update Preview", "", async () => {
+                            await updatePreview();
+                        });
+                        
+                        // Move preview widgets to be right after separator
+                        const previewTextIndex = this.widgets.indexOf(previewTextWidget);
+                        const previewButtonIndex = this.widgets.indexOf(previewButton);
+                        
+                        // Remove from current positions
+                        this.widgets.splice(previewButtonIndex, 1);
+                        this.widgets.splice(previewTextIndex, 1);
+                        
+                        // Insert after separator
+                        this.widgets.splice(separatorIndex + 1, 0, previewTextWidget);
+                        this.widgets.splice(separatorIndex + 2, 0, previewButton);
+                        
+                        // Set up separator widget callback to auto-update preview
+                        const originalSeparatorCallback = separatorWidget.callback;
+                        separatorWidget.callback = function(value) {
+                            if (originalSeparatorCallback) {
+                                originalSeparatorCallback.call(this, value);
+                            }
+                            // Auto-update preview when separator changes
+                            setTimeout(() => updatePreview(), 100);
+                        };
+                        
+                        this.computeSize();
+                        this.setDirtyCanvas(true, true);
+                    }
+                };
+                
+                // Wait for ComfyUI to add the separator widget, then add preview widgets after it
+                setTimeout(() => {
+                    createPreviewWidgets();
+                }, 50);
+                
                 // Let ComfyUI handle widget serialization
                 this.serialize_widgets = true;
 
@@ -203,12 +343,23 @@ app.registerExtension({
                     removeButtons.forEach(widget => {
                         this.widgets.splice(this.widgets.indexOf(widget), 1);
                     });
+                    // Remove preview widgets
+                    const previewWidgets = this.widgets.filter(w => w.name === 'preview_text' || (w.type === 'button' && w.label && w.label.startsWith('🔍 Update Preview')));
+                    console.log('[PromptStack] Removing preview widgets:', previewWidgets.map(w => w.name || w.label));
+                    previewWidgets.forEach(widget => {
+                        this.widgets.splice(this.widgets.indexOf(widget), 1);
+                    });
 
                     // Let ComfyUI restore static widgets (like separator)
                     if (originalOnConfigure) {
                         console.log('[PromptStack] Calling originalOnConfigure');
                         originalOnConfigure.apply(this, arguments);
                     }
+
+                    // Re-add preview widgets after separator
+                    setTimeout(() => {
+                        createPreviewWidgets();
+                    }, 50);
 
                     // Parse prompt entries from widgets_values (category, name, [skip text], enabled)
                     const values = info?.widgets_values || [];
@@ -245,6 +396,9 @@ app.registerExtension({
                                 await updatePromptDropdown(widget, promptWidget, promptWidget.value);
                             }
                         }
+                        
+                        // Update preview after all dropdowns are populated
+                        setTimeout(() => updatePreview(), 300);
                     }, 200);
                 };
 
@@ -253,8 +407,10 @@ app.registerExtension({
                     // Default serialization for separator
                     const values = [];
                     for (const widget of this.widgets) {
-                        // Only serialize widgets that are not remove buttons
+                        // Only serialize widgets that are not remove buttons, preview widgets, or separators
                         if (widget.type === 'button' && widget.label && widget.label.startsWith('❌ Remove Entry')) continue;
+                        if (widget.type === 'button' && widget.label && widget.label.startsWith('🔍 Update Preview')) continue;
+                        if (widget.name === 'preview_text') continue;
                         if (widget.type === 'text' && widget.label && widget.label.startsWith('────────────────')) continue;
                         if (widget.type === 'text' && widget.label && widget.label === 'Stacked Prompts:') continue;
                         if (typeof widget.serializeValue === 'function') {
