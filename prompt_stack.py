@@ -68,14 +68,6 @@ class PromptStack:
                 with open(prompts_file, 'r', encoding='utf-8') as f:
                     prompts_db = json.load(f)
                     categories = list(prompts_db.keys())
-                    
-                    # Collect all possible prompt names from all categories
-                    all_prompt_names = set()
-                    for category_prompts in prompts_db.values():
-                        if isinstance(category_prompts, dict):
-                            all_prompt_names.update(category_prompts.keys())
-                    
-                    prompt_names = sorted(list(all_prompt_names))
                         
         except Exception as e:
             print(f"Error loading categories for PromptStack INPUT_TYPES: {e}")
