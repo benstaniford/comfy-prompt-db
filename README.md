@@ -2,6 +2,10 @@
 
 A ComfyUI custom node package that provides database-driven prompt management. Store, organize, and edit prompts in categories with persistent JSON storage.
 
+## Screenshot
+
+<img width="1048" height="927" alt="image" src="https://github.com/user-attachments/assets/2a7cd75b-024e-47c7-99a3-be0944e8c3ab" />
+
 ## Features
 
 - **Two Node Types**: 
